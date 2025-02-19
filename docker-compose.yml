@@ -1,0 +1,44 @@
+# docker-compose.yml
+#version: '3.8'
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_APP=app
+      - FLASK_ENV=development
+      - DATABASE_URL=mysql+pymysql://moto_user:moto_password@db/moto_db
+    volumes:
+      - ./app:/app/app
+      - ./templates:/app/templates
+      - ./static:/app/static
+    depends_on:
+      - db
+    networks:
+      - moto-network
+
+  db:
+    image: mariadb:10.6
+    environment:
+      - MYSQL_ROOT_PASSWORD=rootpassword
+      - MYSQL_DATABASE=moto_db
+      - MYSQL_USER=moto_user
+      - MYSQL_PASSWORD=moto_password
+    volumes:
+      - mariadb_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "3306:3306"
+    networks:
+      - moto-network
+
+networks:
+  moto-network:
+    driver: bridge
+
+volumes:
+  mariadb_data:

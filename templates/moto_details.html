@@ -1,0 +1,20 @@
+# templates/moto_details.html
+{% extends "base.html" %}
+
+{% block content %}
+<div class="moto-details">
+    {% if moto.image_url %}
+    <img src="{{ moto.image_url }}" alt="{{ moto.marque }} {{ moto.modele }}">
+    {% endif %}
+    <h1>{{ moto.marque }} {{ moto.modele }}</h1>
+    <div class="details">
+        <p><strong>Année :</strong> {{ moto.annee }}</p>
+        <p><strong>Kilométrage :</strong> {{ moto.kilometrage }} km</p>
+        <p><strong>Prix :</strong> {{ moto.prix }}€</p>
+    </div>
+    <div class="description">
+        <h2>Description</h2>
+        <p>{{ moto.description }}</p>
+    </div>
+</div>
+{% endblock %}

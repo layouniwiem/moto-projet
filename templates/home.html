@@ -1,0 +1,18 @@
+# templates/home.html
+{% extends "base.html" %}
+
+{% block content %}
+<div class="motos-grid">
+    {% for moto in motos %}
+    <div class="moto-card">
+        {% if moto.image_url %}
+        <img src="{{ moto.image_url }}" alt="{{ moto.marque }} {{ moto.modele }}">
+        {% endif %}
+        <h2>{{ moto.marque }} {{ moto.modele }}</h2>
+        <p>Année : {{ moto.annee }}</p>
+        <p>Prix : {{ moto.prix }}€</p>
+        <a href="{{ url_for('main.moto_details', id=moto.id) }}" class="btn">Voir détails</a>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
