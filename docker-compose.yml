@@ -1,6 +1,4 @@
-# docker-compose.yml
-#version: '3.8'
-
+version: '3.8'
 services:
   web:
     build:
@@ -13,9 +11,10 @@ services:
       - FLASK_ENV=development
       - DATABASE_URL=mysql+pymysql://moto_user:moto_password@db/moto_db
     volumes:
+      # Monter les dossiers de développement
       - ./app:/app/app
-      - ./templates:/app/templates
-      - ./static:/app/static
+      - ./static:/app/app/static
+      - ./templates:/app/app/templates
     depends_on:
       - db
     networks:
