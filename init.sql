@@ -29,6 +29,6 @@ INSERT INTO user (username, email, password_hash) VALUES
 
 -- Insertion de motos de test
 INSERT INTO moto (marque, modele, annee, kilometrage, prix, description) VALUES 
-('Honda', 'CBR 600RR', 2019, 15000, 8500, 'Excellent état, entretien régulier'),
+('Honda', 'CBR 600RR', 2018, 15000, 8500, 'Excellent état, entretien régulier',"https://www.bing.com/images/search?q=images%20(%27Honda%27,%20%27CBR%20600RR%27,%202019,%2015000,%208500,%20%27Excellent%20%C3%A9tat,%20entretien%20r%C3%A9gulier%27),&FORM=IQFRBA&id=35C3D9F3EDD45822FE354A8283CC56649922FA00"),
 ('Yamaha', 'MT-07', 2020, 8000, 6500, 'Première main, comme neuve'),
 ('Kawasaki', 'Z900', 2021, 5000, 9000, 'Garantie constructeur, options incluses');

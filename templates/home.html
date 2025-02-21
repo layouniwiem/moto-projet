@@ -1,4 +1,3 @@
-# templates/home.html
 {% extends "base.html" %}
 
 {% block content %}
@@ -7,6 +6,8 @@
     <div class="moto-card">
         {% if moto.image_url %}
         <img src="{{ moto.image_url }}" alt="{{ moto.marque }} {{ moto.modele }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+        <img src="{{ url_for('static', filename='img/moto.jpg') }}" alt="Moto">
         {% endif %}
         <h2>{{ moto.marque }} {{ moto.modele }}</h2>
         <p>Année : {{ moto.annee }}</p>
