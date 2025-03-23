@@ -24,8 +24,8 @@ CREATE TABLE IF NOT EXISTS moto (
 
 -- Insertion d'utilisateurs de test
 INSERT INTO user (username, email, password_hash) VALUES 
-('admin', 'admin@example.com', 'pbkdf2:sha256:260000$YOUR_HASH_HERE'),
-('user1', 'user1@example.com', 'pbkdf2:sha256:260000$YOUR_HASH_HERE');
+('admin', 'admin@example.com', 'pbkdf2:sha256:260000$hqhdH035aotJ6Xw0$359165cf690ea13c7f64c512078a3df41bdbc366543160b3721e49757fef306c'),
+('user1', 'user1@example.com', 'pbkdf2:sha256:260000$hqhdH035aotJ6Xw0$359165cf690ea13c7f64c512078a3df41bdbc366543160b3721e49757fef306c');
 
 -- Insertion de motos de test
 INSERT INTO moto (marque, modele, annee, kilometrage, prix, description) VALUES 
