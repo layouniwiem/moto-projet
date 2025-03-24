@@ -1,0 +1,39 @@
+---
+- name: Installation de Docker
+  hosts: all
+  become: true
+  roles:
+    - docker
+
+- name: Déployer la base de données MariaDB
+  hosts: mariadb_servers
+  become: true
+  vars:
+    mariadb_container_name: "mariadb"
+    mariadb_image: "mariadb:latest"
+    mariadb_port: "3306"
+    mariadb_root_password: "rootpassword"
+    mariadb_database: "my_database"
+    mariadb_user: "my_user"
+    mariadb_user_password: "userpassword"
+    mariadb_role: "admin_role"
+    ansible_python_interpreter: /usr/bin/python3
+  roles:
+    - database
+
+- name: Déployer l’application web
+  hosts: app_servers
+  become: true
+  vars:
+    app_repo_url: "https://github.com/layouniwiem/RedProject"
+    app_directory: "/var/www/your-app"
+    nginx_site_enabled: "/etc/nginx/sites-enabled/your-app.conf"
+    nginx_config_file: "/etc/nginx/nginx.conf"
+
+  roles:
+    - app
+  handlers:
+    - name: Redémarrer MariaDB
+      service:
+        name: mariadb
+        state: restarted

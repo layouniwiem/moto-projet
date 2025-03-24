@@ -1,0 +1,25 @@
+# /etc/nginx/nginx.conf
+
+user www-data;
+worker_processes auto;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    include       mime.types;
+    default_type  application/octet-stream;
+
+    # Autres directives de configuration HTTP (serveurs, etc.)
+
+    server {
+        listen 80;
+        server_name localhost;
+
+        location / {
+            root   /var/www/your-app;
+            index  index.html index.htm;
+        }
+    }
+}

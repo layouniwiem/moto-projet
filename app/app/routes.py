@@ -85,7 +85,7 @@ def add_moto():
                         img.thumbnail(output_size)
                         img.save(filepath)
 
-                image_url = f'/static/img/{filename}'
+                image_url = filename  # Stocke juste le nom du fichier
                 
                 # Créer la moto avec l'image
                 moto = Moto(

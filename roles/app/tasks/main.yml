@@ -1,0 +1,130 @@
+---
+
+    # 1️ Définir un répertoire temporaire sûr pour Ansible
+    - name: Définir un répertoire temporaire alternatif pour Ansible
+      set_fact:
+        ansible_remote_tmp: "/tmp/.ansible"
+
+    - name: Créer le répertoire temporaire Ansible
+      file:
+        path: "/tmp/.ansible"
+        state: directory
+        mode: '0777'
+
+    # 2️ Installation de Git
+    - name: Installer Git (Debian)
+      apt:
+        name: git
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Installer Git (RedHat)
+      yum:
+        name: git
+        state: present
+      when: ansible_os_family == "RedHat"
+
+    # 3️ Configuration de Git (sans --global pour éviter les erreurs)
+    - name: Configurer Git user.name
+      shell: git config --system user.name "layouniwiem"
+
+    - name: Configurer Git user.email
+      shell: git config --system user.email "layouniwiem1993@gmail.com"
+      #-----------------
+    - name: Allow Git to access the repository safely
+      command: git config --global --add safe.directory /var/www/your-app
+    
+
+    - name: Pull latest changes from the repository
+      git:
+        repo: "https://github.com/greta-devops/Devops_riders.git"
+        dest: "/var/www/your-app"
+        version: main
+        force: yes
+
+    # 4️ Vérification et correction des permissions sur le dossier cible
+    - name: Vérifier et ajuster les permissions sur /var/www/
+      file:
+        path: /var/www/
+        owner: www-data
+        group: www-data
+        mode: '0755'
+        recurse: yes
+        force: yes
+
+    # 5️ Nettoyer le répertoire cible avant clonage
+    - name: Nettoyer le répertoire cible
+      file:
+        path: /var/www/html
+        state: absent
+
+    # 6️Cloner le repository de l'application
+    - name: Cloner le repository de l'application
+      git:
+        repo: "{{ app_repo_url }}"
+        dest: "{{ app_directory }}"
+        force: yes
+        version: main  # Remplace "main" par la branche correcte
+
+    # 7️ Configurer Git safe.directory sans erreur de permission
+    - name: Ajouter le répertoire Git à la liste des répertoires sûrs
+      shell: sudo -u www-data git config --local --add safe.directory /var/www/your-app
+      args:
+        chdir: /var/www/your-app
+
+    # 8️ Vérifier et ajuster les permissions après clonage
+    - name: Définir les permissions du répertoire de l'application
+      file:
+        path: "{{ app_directory }}"
+        owner: www-data
+        group: www-data
+        mode: '0755'
+        recurse: yes
+
+    # 9️ Installation de Nginx
+    - name: Installer Nginx (Debian)
+      apt:
+          name: nginx
+          state: present
+      when: ansible_os_family == "Debian"
+
+
+    - name: Installer Nginx (RedHat)
+      yum:
+        name: nginx
+        state: present
+      when: ansible_os_family == "RedHat"
+
+    # 10 Configuration de Nginx
+    - name: Configurer Nginx
+      template:
+        src: "nginx-app.conf.j2"
+        dest: "{{ nginx_config_file }}"
+      notify:
+        - Reload nginx
+
+
+    - name: Créer un lien symbolique vers sites-enabled
+      file:
+        src: "{{ nginx_config_file }}"
+        dest: "{{ nginx_site_enabled }}"
+        state: link
+
+    # 1️1️ Tester la configuration Nginx
+    - name: Tester la configuration Nginx
+      command: nginx -t
+      register: nginx_test
+      changed_when: false
+      failed_when: nginx_test.rc != 0
+
+    # 1️2️ Démarrer et activer Nginx
+    - name: Démarrer et activer Nginx
+      service:
+        name: nginx
+        state: started
+        enabled: true
+
+  
+
+   
+    
