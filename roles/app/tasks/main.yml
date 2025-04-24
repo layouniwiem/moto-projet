@@ -1,5 +1,4 @@
 ---
-
     # 1️ Définir un répertoire temporaire sûr pour Ansible
     - name: Définir un répertoire temporaire alternatif pour Ansible
       set_fact:
@@ -30,19 +29,12 @@
 
     - name: Configurer Git user.email
       shell: git config --system user.email "layouniwiem1993@gmail.com"
-      #-----------------
-    - name: Allow Git to access the repository safely
-      command: git config --global --add safe.directory /var/www/your-app
-    
 
-    - name: Pull latest changes from the repository
-      git:
-        repo: "https://github.com/greta-devops/Devops_riders.git"
-        dest: "/var/www/your-app"
-        version: main
-        force: yes
+    # 4️ Autoriser Git à travailler dans /var/www/your-app2
+    - name: Autoriser Git à accéder en toute sécurité au repo
+      command: git config --global --add safe.directory /var/www/your-app2
 
-    # 4️ Vérification et correction des permissions sur le dossier cible
+    # 5️ Vérification et correction des permissions sur /var/www/
     - name: Vérifier et ajuster les permissions sur /var/www/
       file:
         path: /var/www/
@@ -50,27 +42,31 @@
         group: www-data
         mode: '0755'
         recurse: yes
-        force: yes
-
-    # 5️ Nettoyer le répertoire cible avant clonage
-    - name: Nettoyer le répertoire cible
+      #Créer le répertoire de l'application si non existant
+    - name: Créer le répertoire de l'application si non existant
       file:
-        path: /var/www/html
-        state: absent
+        path: "{{ app_directory }}"
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: '0755'
 
-    # 6️Cloner le repository de l'application
+
+    # 6️ Cloner le repository de l'application
     - name: Cloner le repository de l'application
       git:
         repo: "{{ app_repo_url }}"
         dest: "{{ app_directory }}"
         force: yes
-        version: main  # Remplace "main" par la branche correcte
+        version: main
+      become: true
+      become_user: www-data
 
     # 7️ Configurer Git safe.directory sans erreur de permission
     - name: Ajouter le répertoire Git à la liste des répertoires sûrs
-      shell: sudo -u www-data git config --local --add safe.directory /var/www/your-app
+      command: sudo -u www-data git config --local --add safe.directory {{ app_directory }}
       args:
-        chdir: /var/www/your-app
+        chdir: "{{ app_directory }}"
 
     # 8️ Vérifier et ajuster les permissions après clonage
     - name: Définir les permissions du répertoire de l'application
@@ -80,14 +76,25 @@
         group: www-data
         mode: '0755'
         recurse: yes
+    #Construire les services Docker Compose
+    - name: Construire les services Docker Compose
+      command: docker-compose build
+      args:
+        chdir: "/var/www/your-app2/app"  # Dirige le chemin vers le répertoire contenant ton fichier docker-compose.yml
+      become: true
 
+    # (Facultatif) Démarrer les conteneurs après le build
+    - name: Lancer les services Docker Compose
+      command: docker-compose up -d --build
+      args:
+        chdir: "/var/www/your-app2/app"
+      become: true
     # 9️ Installation de Nginx
     - name: Installer Nginx (Debian)
       apt:
-          name: nginx
-          state: present
+        name: nginx
+        state: present
       when: ansible_os_family == "Debian"
-
 
     - name: Installer Nginx (RedHat)
       yum:
@@ -95,14 +102,13 @@
         state: present
       when: ansible_os_family == "RedHat"
 
-    # 10 Configuration de Nginx
-    - name: Configurer Nginx
+    #  10 Configuration de Nginx
+    - name: Copier le fichier de configuration Nginx
       template:
         src: "nginx-app.conf.j2"
         dest: "{{ nginx_config_file }}"
       notify:
         - Reload nginx
-
 
     - name: Créer un lien symbolique vers sites-enabled
       file:
@@ -110,21 +116,17 @@
         dest: "{{ nginx_site_enabled }}"
         state: link
 
-    # 1️1️ Tester la configuration Nginx
+    #  11 Tester la configuration Nginx
     - name: Tester la configuration Nginx
       command: nginx -t
       register: nginx_test
       changed_when: false
       failed_when: nginx_test.rc != 0
 
-    # 1️2️ Démarrer et activer Nginx
+    #  12 Démarrer et activer Nginx
     - name: Démarrer et activer Nginx
       service:
         name: nginx
         state: started
         enabled: true
 
-  
-
-   
-    
