@@ -28,7 +28,7 @@ INSERT INTO user (username, email, password_hash) VALUES
 ('user1', 'user1@example.com', 'pbkdf2:sha256:260000$hqhdH035aotJ6Xw0$359165cf690ea13c7f64c512078a3df41bdbc366543160b3721e49757fef306c');
 
 -- Insertion de motos de test
-INSERT INTO moto (marque, modele, annee, kilometrage, prix, description) VALUES 
-('Honda', 'CBR 600RR', 2018, 15000, 8500, 'Excellent état, entretien régulier',"https://www.bing.com/images/search?q=images%20(%27Honda%27,%20%27CBR%20600RR%27,%202019,%2015000,%208500,%20%27Excellent%20%C3%A9tat,%20entretien%20r%C3%A9gulier%27),&FORM=IQFRBA&id=35C3D9F3EDD45822FE354A8283CC56649922FA00"),
-('Yamaha', 'MT-07', 2020, 8000, 6500, 'Première main, comme neuve'),
-('Kawasaki', 'Z900', 2021, 5000, 9000, 'Garantie constructeur, options incluses');
+INSERT INTO moto (marque, modele, annee, kilometrage, prix, description,image_url) VALUES 
+('Honda', 'CBR 600RR', 2018, 15000, 8500, 'Excellent état, entretien régulier', 'https://th.bing.com/th/id/OIP.JbSULy1SSk58Jh9ZOC0vPAHaEo?rs=1&pid=ImgDetMain'),
+('Yamaha', 'MT-07', 2020, 8000, 6500, 'Première main, comme neuve', 'https://th.bing.com/th/id/OIP.iSrQVgkeN4nkzHSfPl1eCAHaFj?rs=1&pid=ImgDetMain'),
+('Kawasaki', 'Z900', 2021, 5000, 9000, 'Garantie constructeur, options incluses', 'https://th.bing.com/th/id/R.449368898dd81b2ea3f04c993a060cba?rik=fwG96vc7Y2hfDw&pid=ImgRaw&r=0');
