@@ -7,17 +7,32 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-    <nav>
-        <ul>
-            <li><a href="{{ url_for('main.home') }}">Accueil</a></li>
-            {% if current_user.is_authenticated %}
-                <li><a href="{{ url_for('main.add_moto') }}">Ajouter une moto</a></li>
-                <li><a href="{{ url_for('auth.logout') }}">Déconnexion</a></li>
-            {% else %}
-                <li><a href="{{ url_for('auth.login') }}">Connexion</a></li>
-            {% endif %}
-        </ul>
+    <nav class="navbar">
+        <!-- Partie gauche : Logo -->
+        <div class="navbar-left">
+            <a href="{{ url_for('main.home') }}">
+                <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo" class="nav-logo">
+            </a>
+        </div>
+    
+        <!-- Partie droite : Liens de navigation -->
+        <div class="navbar-right">
+            <ul class="nav-menu">
+                <li><a href="{{ url_for('main.home') }}">Accueil</a></li>
+                {% if current_user.is_authenticated %}
+                    <li><a href="{{ url_for('main.add_moto') }}">Ajouter une moto</a></li>
+                    <li><a href="{{ url_for('auth.logout') }}">Déconnexion</a></li>
+                {% else %}
+                    <li><a href="{{ url_for('auth.login') }}">Connexion</a></li>
+                {% endif %}
+            </ul>
+        </div>
     </nav>
+    
+    
+    
+    
+    
 
     {% with messages = get_flashed_messages() %}
         {% if messages %}

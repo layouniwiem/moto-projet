@@ -45,6 +45,7 @@ moto-project/
 ```bash
 git clone <url-du-projet>
 cd moto-project
+cd app
 ```
 
 ### 2. Lancer l'application avec Docker

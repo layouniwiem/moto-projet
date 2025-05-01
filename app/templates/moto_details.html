@@ -5,9 +5,10 @@
 <div class="moto-details">
     {% if moto.image_url %}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <img src="{{ url_for('static', filename='img/moto.jpg') }}" alt="Moto">
+  <!--  <img src="{{ url_for('static', filename='img/moto.jpg') }}" alt="Moto"> -->
     <img src="{{ moto.image_url }}" alt="{{ moto.marque }} {{ moto.modele }}">
     {% endif %}
+
     <h1>{{ moto.marque }} {{ moto.modele }}</h1>
     <div class="details">
         <p><strong>Année :</strong> {{ moto.annee }}</p>
