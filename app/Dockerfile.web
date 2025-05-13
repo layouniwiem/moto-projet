@@ -21,16 +21,16 @@
 #ENV PYTHONUNBUFFERED=1
 
 #CMD ["flask", "run", "--host=0.0.0.0"]
-# Dockerfile
+# Dockerfile.web
 FROM python:3.9-slim
-
 WORKDIR /app
 
-# Installation des dépendances système nécessaires
+# Installation des dépendances système nécessaires, y compris le client MySQL
 RUN apt-get update && apt-get install -y \
     build-essential \
     python3-dev \
     default-libmysqlclient-dev \
+    default-mysql-client \
     && rm -rf /var/lib/apt/lists/*
 
 # Installation des packages Python pour le monitoring
@@ -38,6 +38,7 @@ RUN pip install --no-cache-dir prometheus-flask-exporter
 
 # Copie des requirements et installation
 COPY requirements.txt .
+COPY ./static /app/static
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Créer les répertoires nécessaires
@@ -57,9 +58,6 @@ ENV FLASK_APP=app
 ENV PYTHONUNBUFFERED=1
 ENV FLASK_ENV=production
 ENV DATABASE_URL=mysql+pymysql://moto_user:moto_password@mariadb:3306/moto_db
-
-# Ajouter Prometheus monitoring à l'application
-#COPY  monitoring.py /app/monitoring/
 
 # Script d'entrée
 COPY entrypoint.sh /entrypoint.sh

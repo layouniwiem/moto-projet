@@ -20,9 +20,11 @@ spec:
         app: flask-app            # Label apposé sur les pods créés par ce déploiement
 
     spec:                         # Spécification des conteneurs du pod
-      containers:
-      - name: flask-app           # Nom du conteneur
-        image: layouniwiem/devops_riders:latest
+        containers:
+        - name: flask-app
+          image: layouniwiem/devops_riders:latest
+          imagePullPolicy: Always
+
                                    # Image Docker à utiliser (utilise des variables d’environnement à substituer avant le déploiement)
 
         ports:
@@ -46,7 +48,7 @@ spec:
             configMapKeyRef:
               name: app-config
               key: SECRET_KEY
-
+        
         - name: DATABASE_URL
           value: mysql+pymysql://$(MYSQL_USER):$(MYSQL_PASSWORD)@mariadb:3306/$(MYSQL_DATABASE)
                                    # Connexion à la base de données avec des variables d’environnement (définies dans un Secret)
@@ -82,8 +84,8 @@ spec:
             cpu: 200m             # Minimum garanti : 0.2 CPU
             memory: 256Mi         # Minimum garanti : 256 MiB
 
-      volumes:
-      - name: flask-uploads
-        persistentVolumeClaim:
-          claimName: flask-uploads-pvc
-                                   # Volume persistant monté pour stocker les images uploadées
+        volumes:
+        - name: flask-uploads
+          persistentVolumeClaim:
+            claimName: flask-uploads-pvc
+                                    # Volume persistant monté pour stocker les images uploadées

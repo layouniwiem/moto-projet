@@ -8,16 +8,6 @@ metadata:
   namespace: moto-app
 data:
   init.sql: |
-    CREATE DATABASE IF NOT EXISTS moto_db;
-    USE moto_db;
-    
-    CREATE TABLE IF NOT EXISTS user (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      username VARCHAR(64) UNIQUE NOT NULL,
-      email VARCHAR(120) UNIQUE NOT NULL,
-      password_hash VARCHAR(128)
-    );
-    
     CREATE TABLE IF NOT EXISTS moto (
       id INT AUTO_INCREMENT PRIMARY KEY,
       marque VARCHAR(50) NOT NULL,
