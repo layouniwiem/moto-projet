@@ -26,8 +26,8 @@ def create_app():
     app.register_blueprint(main)
     app.register_blueprint(auth)
     
-    from .monitoring import monitoring
-    monitoring.register_metrics(app)
+   # from .monitoring import monitoring
+   # monitoring.register_metrics(app)
 
     # Créer les dossiers nécessaires s'ils n'existent pas
     os.makedirs(os.path.join(app.static_folder, 'img'), exist_ok=True)
