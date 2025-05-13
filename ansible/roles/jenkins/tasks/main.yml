@@ -1,0 +1,94 @@
+# roles/jenkins/tasks/main.yml
+---
+- name: Installation des prérequis Java
+  apt:
+    name: openjdk-11-jdk
+    state: present
+    
+- name: Ajout de la clé GPG Jenkins
+  apt_key:
+    url: https://pkg.jenkins.io/debian-stable/jenkins.io.key
+    state: present
+    
+- name: Ajout du dépôt Jenkins
+  apt_repository:
+    repo: deb https://pkg.jenkins.io/debian-stable binary/
+    state: present
+    
+- name: Installation de Jenkins
+  apt:
+    name: jenkins
+    state: present
+    update_cache: yes
+    
+- name: Ouverture des ports Jenkins
+  ufw:
+    rule: allow
+    port: "8080"
+    proto: tcp
+    
+- name: Démarrage du service Jenkins
+  service:
+    name: jenkins
+    state: started
+    enabled: yes
+    
+- name: Installation de Docker Registry
+  docker_container:
+    name: registry
+    image: registry:2
+    restart_policy: always
+    ports:
+      - "5000:5000"
+    volumes:
+      - /var/lib/registry:/var/lib/registry
+    state: started
+    
+- name: Ouverture du port Docker Registry
+  ufw:
+    rule: allow
+    port: "5000"
+    proto: tcp
+    
+- name: Attente que Jenkins soit disponible
+  uri:
+    url: http://localhost:8080
+    status_code: 200
+  register: result
+  until: result.status == 200
+  retries: 60
+  delay: 1
+  
+- name: Récupération du mot de passe administrateur initial
+  shell: cat /var/lib/jenkins/secrets/initialAdminPassword
+  register: jenkins_admin_password
+  changed_when: false
+  
+- name: Affichage du mot de passe administrateur
+  debug:
+    msg: "Mot de passe administrateur Jenkins: {{ jenkins_admin_password.stdout }}"
+    
+- name: Installation des plugins Jenkins
+  jenkins_plugin:
+    name: "{{ item }}"
+    jenkins_home: /var/lib/jenkins
+    url_username: admin
+    url_password: "{{ jenkins_admin_password.stdout }}"
+    state: present
+  with_items:
+    - git
+    - workflow-aggregator
+    - blueocean
+    - docker-workflow
+    - kubernetes
+    - ansible
+    - pipeline-utility-steps
+    - credentials-binding
+  notify: restart jenkins
+
+# roles/jenkins/handlers/main.yml
+---
+- name: restart jenkins
+  service:
+    name: jenkins
+    state: restarted

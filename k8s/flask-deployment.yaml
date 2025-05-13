@@ -1,0 +1,89 @@
+# Type de ressource Kubernetes : ici un Deployment (gère le cycle de vie des pods)
+apiVersion: apps/v1
+kind: Deployment
+
+# Métadonnées pour identifier l'objet
+metadata:
+  name: flask-app                  # Nom du déploiement
+  namespace: moto-app             # Namespace dans lequel sera créé ce déploiement (doit exister)
+
+spec:
+  replicas: 2                     # Nombre de réplicas (instances de ton app Flask)
+
+  selector:
+    matchLabels:
+      app: flask-app              # Label utilisé pour faire correspondre les pods gérés
+
+  template:                       # Gabarit utilisé pour créer les pods
+    metadata:
+      labels:
+        app: flask-app            # Label apposé sur les pods créés par ce déploiement
+
+    spec:                         # Spécification des conteneurs du pod
+      containers:
+      - name: flask-app           # Nom du conteneur
+        image: layouniwiem/devops_riders:latest
+                                   # Image Docker à utiliser (utilise des variables d’environnement à substituer avant le déploiement)
+
+        ports:
+        - containerPort: 5000     # Port exposé par l'application Flask à l'intérieur du conteneur
+
+        env:                      # Variables d’environnement définies à partir d’un ConfigMap
+        - name: FLASK_APP
+          valueFrom:
+            configMapKeyRef:
+              name: app-config    # Nom du ConfigMap
+              key: FLASK_APP      # Clé du ConfigMap pour FLASK_APP
+
+        - name: FLASK_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: FLASK_ENV
+
+        - name: SECRET_KEY
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: SECRET_KEY
+
+        - name: DATABASE_URL
+          value: mysql+pymysql://$(MYSQL_USER):$(MYSQL_PASSWORD)@mariadb:3306/$(MYSQL_DATABASE)
+                                   # Connexion à la base de données avec des variables d’environnement (définies dans un Secret)
+
+        envFrom:
+        - secretRef:
+            name: db-credentials  # Secret contenant les variables MYSQL_USER, MYSQL_PASSWORD, MYSQL_DATABASE
+
+        volumeMounts:
+        - name: flask-uploads
+          mountPath: /app/static/img
+                                   # Montage d’un volume pour les fichiers uploadés dans le dossier statique de Flask
+
+        readinessProbe:           # Vérifie si le conteneur est prêt à recevoir du trafic
+          httpGet:
+            path: /
+            port: 5000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+
+        livenessProbe:            # Vérifie si l’application est toujours en vie (sinon Kubernetes redémarre le pod)
+          httpGet:
+            path: /
+            port: 5000
+          initialDelaySeconds: 30
+          periodSeconds: 15
+
+        resources:                # Gestion des ressources (limites et requêtes CPU/mémoire)
+          limits:
+            cpu: 500m             # Maximum autorisé : 0.5 CPU
+            memory: 512Mi         # Maximum autorisé : 512 MiB
+          requests:
+            cpu: 200m             # Minimum garanti : 0.2 CPU
+            memory: 256Mi         # Minimum garanti : 256 MiB
+
+      volumes:
+      - name: flask-uploads
+        persistentVolumeClaim:
+          claimName: flask-uploads-pvc
+                                   # Volume persistant monté pour stocker les images uploadées

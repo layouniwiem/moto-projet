@@ -1,0 +1,11 @@
+---
+# config-map.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: moto-app
+data:
+  FLASK_ENV: "production"
+  FLASK_APP: "app"
+  SECRET_KEY: "production-key-should-be-changed"
