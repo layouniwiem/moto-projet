@@ -4,6 +4,7 @@
   hosts: all
   become: yes
   tasks:
+  
     - name: Mise à jour des packages
       apt:
         update_cache: yes
@@ -26,7 +27,16 @@
           - ufw
           - fail2ban
         state: present
-        
+    - name: Installation des packages avec option --fix-missing
+      apt:
+        name:
+          - vim
+          - curl
+         
+        force: yes
+      environment:
+        APT_ARGS: "-o Dpkg::Options::='--force-confdef' -o Dpkg::Options::='--force-confold'"    
+            
     - name: Configuration du fuseau horaire
       timezone:
         name: Europe/Paris
