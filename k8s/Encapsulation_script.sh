@@ -12,13 +12,18 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 #PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 # Transformation en chemin Windows
 #PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-windows_path=$(echo "$SCRIPT_DIR" | sed -E 's|/mnt/([a-z])/|\U\1:/|' | sed 's|/|\\|g')
+#windows_path=$(echo "$SCRIPT_DIR" | sed -E 's|/mnt/([a-z])/|\U\1:/|' | sed 's|/|\\|g')
 
 echo "win:$windows_path"
-#SCRIPT_DIR="/c/wiem/FilsRouge/moto-project/scripts"
-PROJECT_DIR="$(cd "$windows_path\.." && pwd)"  # monte d’un niveau pour atteindre moto-project
+SCRIPT_DIR="/mnt/c/wiem/FilsRouge/moto-project/k8s"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 DOCKERFILE_DIR="$PROJECT_DIR/app"
 DOCKERFILE="$DOCKERFILE_DIR/Dockerfile"
+
+
+DOCKERFILE_DIR="$PROJECT_DIR/app"
+DOCKERFILE="$DOCKERFILE_DIR/Dockerfile"
+
 
 
 
