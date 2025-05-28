@@ -2,10 +2,10 @@
 all:
   vars:
     ansible_python_interpreter: /usr/bin/python3
-    ansible_user: admin
+    ansible_user: root
     ansible_become: yes
     ansible_become_method: sudo
-    project_name: moto_app
+    project_name: moto-app
     docker_registry: localhost:5000
     app_version: 1.0.0
     domain_name: moto-app.example.com
@@ -20,7 +20,7 @@ all:
     kubernetes:
       hosts:
         vm2:
-          ansible_host: 192.168.1.44
+          ansible_host: 192.168.1.40
           ansible_port: 22
           node_role: prod
           k3s_type: master
