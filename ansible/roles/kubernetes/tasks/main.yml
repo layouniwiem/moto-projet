@@ -1,5 +1,3 @@
-# roles/kubernetes/tasks/main.yml
----
 - name: Installation des prérequis K3s
   apt:
     name:
@@ -8,7 +6,7 @@
       - software-properties-common
       - apt-transport-https
     state: present
-    
+
 - name: Configuration système pour K3s
   sysctl:
     name: net.ipv4.ip_forward
@@ -16,7 +14,7 @@
     state: present
     sysctl_set: yes
     reload: yes
-    
+
 - name: Installation de K3s (Master)
   shell: |
     curl -sfL https://get.k3s.io | sh -s - \
@@ -26,25 +24,14 @@
   args:
     creates: /usr/local/bin/k3s
   when: k3s_type == "master"
-  
-- name: Ouverture des ports Kubernetes
-  ufw:
-    rule: allow
-    port: "{{ item }}"
-    proto: tcp
-  with_items:
-    - 6443   # Kubernetes API
-    - 80     # HTTP
-    - 443    # HTTPS
-    - 10250  # Kubelet
-    
+
 - name: Attendre que K3s soit disponible
   wait_for:
     path: /etc/rancher/k3s/k3s.yaml
     state: present
     timeout: 300
   when: k3s_type == "master"
-  
+
 - name: Récupérer le kubeconfig
   fetch:
     src: /etc/rancher/k3s/k3s.yaml
@@ -52,27 +39,38 @@
     flat: yes
   when: k3s_type == "master"
 
-- name: Installation de NGINX Ingress Controller
+- name: Installation du NGINX Ingress Controller
   shell: |
     kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.1.1/deploy/static/provider/cloud/deploy.yaml
   environment:
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml
   when: k3s_type == "master"
-  
-- name: Création du namespace pour l'application
-  kubernetes.core.k8s:
-    name: moto-app
-    api_version: v1
-    kind: Namespace
-    state: present
+
+- name: Créer le namespace de l'application
+  shell: |
+    kubectl create namespace {{ project_name }} --dry-run=client -o yaml | kubectl apply -f -
   environment:
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml
   when: k3s_type == "master"
+  
+- name: Vider le dossier /tmp/k8s/ sur la machine distante
+  file:
+    path: /tmp/k8s/
+    state: absent
+  when: k3s_type == "master"
 
-# roles/kubernetes/handlers/main.yml
----
-- name: restart k3s
-  service:
-    name: k3s
-    state: restarted
+
+- name: Copier uniquement les manifests YAML
+  find:
+    paths: "/home/wiem/wiem/devopsRiders/moto-projet/k8s" 
+    patterns: "*.yaml,*.yml"
+    recurse: no
+  register: k8s_manifests
+  when: k3s_type == "master"
+
+- name: Copier les fichiers YAML vers le nœud cible
+  copy:
+    src: "{{ item.path }}"
+    dest: "/tmp/k8s/{{ item.path | basename }}"
+  loop: "{{ k8s_manifests.files }}"
   when: k3s_type == "master"
