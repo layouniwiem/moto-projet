@@ -1,4 +1,3 @@
-// Jenkinsfile
 pipeline {
     agent any
     
@@ -8,45 +7,54 @@ pipeline {
         APP_VERSION = "${env.BUILD_NUMBER}"
         KUBECONFIG = credentials('kubeconfig')
     }
-    
+
     stages {
-        stage('Preparation') {
+        stage('Checkout') {
             steps {
-                checkout scm
-                sh 'pip install -r requirements.txt'
-                sh 'pip install pytest pytest-flask pytest-cov'
+                git url: 'https://github.com/layouniwiem/moto-projet.git', branch: 'main'
             }
         }
-        
+
+        stage('Install dependencies') {
+            steps {
+                dir('app') {
+                    sh 'pip install -r requirements.txt'
+                    sh 'pip install pytest pytest-flask pytest-cov'
+                }
+            }
+        }
+
         stage('Test') {
             steps {
-                sh 'python -m pytest --cov=app tests/'
+                dir('app') {
+                    sh 'pytest --cov=app tests/'
+                }
             }
             post {
                 always {
                     junit 'test-reports/*.xml'
-                    publishHTML(
-                        target: [
-                            allowMissing: false,
-                            alwaysLinkToLastBuild: false,
-                            keepAll: true,
-                            reportDir: 'coverage',
-                            reportFiles: 'index.html',
-                            reportName: 'Coverage Report'
-                        ]
-                    )
+                    publishHTML target: [
+                        allowMissing: true,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true,
+                        reportDir: 'coverage',
+                        reportFiles: 'index.html',
+                        reportName: 'Coverage Report'
+                    ]
                 }
             }
         }
-        
+
         stage('SonarQube Analysis') {
             steps {
-                withSonarQubeEnv('SonarQube') {
-                    sh 'sonar-scanner -Dsonar.projectKey=moto-app -Dsonar.sources=.'
+                dir('app') {
+                    withSonarQubeEnv('SonarQube') {
+                        sh 'sonar-scanner -Dsonar.projectKey=moto-app -Dsonar.sources=.'
+                    }
                 }
             }
         }
-        
+
         stage('Quality Gate') {
             steps {
                 timeout(time: 1, unit: 'HOURS') {
@@ -54,63 +62,67 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t ${DOCKER_REGISTRY}/${APP_NAME}:${APP_VERSION} .'
-                sh 'docker tag ${DOCKER_REGISTRY}/${APP_NAME}:${APP_VERSION} ${DOCKER_REGISTRY}/${APP_NAME}:latest'
+                dir('app') {
+                    sh 'docker build -t ${DOCKER_REGISTRY}/${APP_NAME}:${APP_VERSION} .'
+                    sh 'docker tag ${DOCKER_REGISTRY}/${APP_NAME}:${APP_VERSION} ${DOCKER_REGISTRY}/${APP_NAME}:latest'
+                }
             }
         }
-        
+
         stage('Security Scan') {
             steps {
                 sh 'docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image ${DOCKER_REGISTRY}/${APP_NAME}:${APP_VERSION}'
             }
         }
-        
+
         stage('Push Image') {
             steps {
                 sh 'docker push ${DOCKER_REGISTRY}/${APP_NAME}:${APP_VERSION}'
                 sh 'docker push ${DOCKER_REGISTRY}/${APP_NAME}:latest'
             }
         }
-        
+
         stage('Deploy to Kubernetes') {
             steps {
                 sh 'mkdir -p ~/.kube'
                 sh 'cp $KUBECONFIG ~/.kube/config'
-                
-                // Appliquer les manifestes Kubernetes
-                sh 'kubectl apply -f kubernetes/namespace.yaml'
-                sh 'kubectl apply -f kubernetes/secrets.yaml'
-                sh 'kubectl apply -f kubernetes/config-map.yaml'
-                sh 'kubectl apply -f kubernetes/persistent-volumes.yaml'
-                sh 'kubectl apply -f kubernetes/db-init-configmap.yaml'
-                sh 'kubectl apply -f kubernetes/mariadb-deployment.yaml'
-                sh 'kubectl apply -f kubernetes/mariadb-service.yaml'
-                
-                // Remplacer les variables dans le fichier de déploiement de l'application
-                sh 'cat kubernetes/flask-deployment.yaml | sed "s|\${DOCKER_REGISTRY}|${DOCKER_REGISTRY}|g" | sed "s|\${APP_VERSION}|${APP_VERSION}|g" | kubectl apply -f -'
-                sh 'kubectl apply -f kubernetes/flask-service.yaml'
-                sh 'kubectl apply -f kubernetes/ingress.yaml'
+
+                sh 'kubectl apply -f k8s/namespace.yaml'
+                sh 'kubectl apply -f k8s/secrets.yaml'
+                sh 'kubectl apply -f k8s/config-map.yaml'
+                sh 'kubectl apply -f k8s/persistent-volumes.yaml'
+                sh 'kubectl apply -f k8s/db-init-configmap.yaml'
+                sh 'kubectl apply -f k8s/mariadb-deployment.yaml'
+                sh 'kubectl apply -f k8s/mariadb-service.yaml'
+
+                sh """
+                sed -e "s|\\\$\\{DOCKER_REGISTRY\\}|${DOCKER_REGISTRY}|g" \\
+                    -e "s|\\\$\\{APP_VERSION\\}|${APP_VERSION}|g" k8s/flask-deployment.yaml | kubectl apply -f -
+                """
+
+                sh 'kubectl apply -f k8s/flask-service.yaml'
+                sh 'kubectl apply -f k8s/ingress.yaml'
             }
         }
-        
+
         stage('Verify Deployment') {
             steps {
                 sh 'kubectl rollout status deployment/flask-app -n moto-app'
             }
         }
     }
-    
+
     post {
         success {
-            echo 'Déploiement réussi !'
-            slackSend(color: 'good', message: "Déploiement de ${APP_NAME}:${APP_VERSION} réussi")
+            echo '✅ Déploiement réussi !'
+            slackSend(color: 'good', message: "✅ Déploiement de ${APP_NAME}:${APP_VERSION} réussi", channel: '#devops-alerts', tokenCredentialId: 'slack-token-id')
         }
         failure {
-            echo 'Le déploiement a échoué.'
-            slackSend(color: 'danger', message: "Déploiement de ${APP_NAME}:${APP_VERSION} échoué")
+            echo '❌ Le déploiement a échoué.'
+            slackSend(color: 'danger', message: "❌ Déploiement de ${APP_NAME}:${APP_VERSION} échoué", channel: '#devops-alerts', tokenCredentialId: 'slack-token-id')
         }
         always {
             cleanWs()
