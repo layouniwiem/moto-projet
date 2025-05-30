@@ -86,9 +86,3 @@
     - credentials-binding
   notify: restart jenkins
 
-# roles/jenkins/handlers/main.yml
----
-- name: restart jenkins
-  service:
-    name: jenkins
-    state: restarted

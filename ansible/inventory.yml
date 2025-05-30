@@ -2,7 +2,7 @@
 all:
   vars:
     ansible_python_interpreter: /usr/bin/python3
-    ansible_user: admin
+    ansible_user: root
     ansible_become: yes
     ansible_become_method: sudo
     project_name: moto_app

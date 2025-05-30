@@ -69,10 +69,4 @@
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml
   when: k3s_type == "master"
 
-# roles/kubernetes/handlers/main.yml
----
-- name: restart k3s
-  service:
-    name: k3s
-    state: restarted
-  when: k3s_type == "master"
+
