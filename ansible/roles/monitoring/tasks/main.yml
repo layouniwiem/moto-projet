@@ -96,15 +96,19 @@
         name: grafana-server
         state: started
         enabled: yes
+- name: Installer ufw (si nécessaire)
+  apt:
+    name: ufw
+    state: present
+  when: ansible_os_family == 'Debian'
+  become: true
 
-- name: Ouverture des ports de monitoring
+- name: Ouvrir les ports avec ufw
   ufw:
     rule: allow
     port: "{{ item }}"
     proto: tcp
-  with_items:
-    - 9090  # Prometheus
-    - 9100  # Node Exporter
-    - 3000  # Grafana
+  loop: [9090, 9100, 3000]
+  become: true
 
 
