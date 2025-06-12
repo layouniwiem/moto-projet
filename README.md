@@ -2,21 +2,20 @@ Voici une **documentation complète** pour déployer le projet *"Application Web
 
 ---
 
-# 📘 Documentation de Déploiement du Projet Moto-App
+#  Documentation de Déploiement du Projet Moto-App
 
-## 🛠️ 1. Prérequis
+##  1. Prérequis
 
-* ✅ Docker / Docker Compose
-* ✅ Kubernetes (Minikube ou K3s)
-* ✅ Helm (optionnel)
-* ✅ Ansible (2.10+)
-* ✅ Jenkins (pour CI/CD)
-* ✅ Accès à DockerHub (ex. : `layouniwiem/devops_riders`)
-* ✅ Accès sudo sur les machines distantes (via SSH)
+*  Docker / Docker Compose
+*  Kubernetes (Minikube ou K3s)
+*  Ansible (2.10+)
+*  Jenkins (pour CI/CD)
+*  Accès à DockerHub (ex. : `layouniwiem/devops_riders`)
+*  Accès sudo sur les machines distantes (via SSH)
 
 ---
 
-## 🧱 2. Structure Technique
+##  2. Structure Technique
 
 * **Backend** : Flask (Python)
 * **Base de données** : MariaDB
@@ -30,7 +29,7 @@ Voici une **documentation complète** pour déployer le projet *"Application Web
 
 ---
 
-## 🧑‍💻 3. Déploiement Manuel Kubernetes (via scripts)
+##  3. Déploiement Manuel Kubernetes (via scripts)
 
 ### Étapes :
 
@@ -68,9 +67,9 @@ curl http://localhost:8080
 
 ---
 
-## 🤖 4. Déploiement Automatisé avec Ansible
+##  4. Déploiement Automatisé avec Ansible
 
-### 🗂️ Rôles disponibles :
+###  Rôles disponibles :
 
 * `roles/docker`
 * `roles/database`
@@ -79,7 +78,7 @@ curl http://localhost:8080
 * `roles/kubernetes`
 * `roles/monitoring`
 
-### 📦 Exemple de Playbook :
+###  Exemple de Playbook :
 
 ```yaml
 - name: Setup complet
@@ -99,7 +98,7 @@ Variables comme `mariadb_user`, `app_repo_url`, etc., sont définies dans les `g
 
 ---
 
-## 🔄 5. Intégration Continue (CI/CD) avec Jenkins
+##  5. Intégration Continue (CI/CD) avec Jenkins
 
 * Jenkins est déployé via Ansible (`roles/jenkins`)
 * L’image de l’application est buildée puis pushée vers Docker Hub
@@ -111,7 +110,7 @@ Variables comme `mariadb_user`, `app_repo_url`, etc., sont définies dans les `g
 
 ---
 
-## 📊 6. Monitoring
+##  6. Monitoring
 
 ### Outils utilisés :
 
@@ -131,7 +130,7 @@ Variables comme `mariadb_user`, `app_repo_url`, etc., sont définies dans les `g
 
 ---
 
-## 🧪 7. Tests et Validation
+##  7. Tests et Validation
 
 Un test unitaire de la route d'accueil est disponible dans `tests/test_home.py` :
 
@@ -146,14 +145,14 @@ def test_homepage():
 
 ---
 
-## 🧷 8. Accès à l'application
+##  8. Accès à l'application
 
 * Frontend : `http://localhost:8080` ou `http://moto-app.example.com` via ingress
 * Base de données : via `kubectl exec` ou `docker exec` si local
 
 ---
 
-## 📌 Commandes Utiles
+##  Commandes Utiles
 
 ```bash
 # Lister les pods
@@ -171,7 +170,7 @@ curl http://moto-app.example.com
 
 ---
 
-## 🔐 Utilisateurs de Test
+##  Utilisateurs de Test
 
 ```txt
 Admin :
