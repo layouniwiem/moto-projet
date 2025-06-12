@@ -1,0 +1,133 @@
+pipeline {
+    agent any
+    
+    environment {
+        DOCKER_REGISTRY = "localhost:5000"
+        APP_NAME = "moto-app"
+        APP_VERSION = "${env.BUILD_NUMBER}"
+        KUBECONFIG = credentials('kubeconfig')
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                git url: 'https://github.com/layouniwiem/moto-projet.git', branch: 'main'
+            }
+        }
+
+        stage('Install dependencies') {
+            steps {
+                dir('app') {
+                    sh 'pip install -r requirements.txt'
+                    sh 'pip install pytest pytest-flask pytest-cov'
+                }
+            }
+        }
+
+        stage('Test') {
+            steps {
+                dir('app') {
+                    sh 'pytest --cov=app tests/'
+                }
+            }
+            post {
+                always {
+                    junit 'test-reports/*.xml'
+                    publishHTML target: [
+                        allowMissing: true,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true,
+                        reportDir: 'coverage',
+                        reportFiles: 'index.html',
+                        reportName: 'Coverage Report'
+                    ]
+                }
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                dir('app') {
+                    sh 'docker build -t ${DOCKER_REGISTRY}/${APP_NAME}:${APP_VERSION} .'
+                    sh 'docker tag ${DOCKER_REGISTRY}/${APP_NAME}:${APP_VERSION} ${DOCKER_REGISTRY}/${APP_NAME}:latest'
+                }
+            }
+        }
+
+        stage('Security Scan') {
+            steps {
+                sh 'docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image ${DOCKER_REGISTRY}/${APP_NAME}:${APP_VERSION}'
+            }
+        }
+
+        stage('Push Image') {
+            steps {
+                sh 'docker push ${DOCKER_REGISTRY}/${APP_NAME}:${APP_VERSION}'
+                sh 'docker push ${DOCKER_REGISTRY}/${APP_NAME}:latest'
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                sh 'mkdir -p ~/.kube'
+                sh 'cp $KUBECONFIG ~/.kube/config'
+
+                sh 'kubectl apply -f k8s/namespace.yaml'
+                sh 'kubectl apply -f k8s/secrets.yaml'
+                sh 'kubectl apply -f k8s/config-map.yaml'
+                sh 'kubectl apply -f k8s/persistent-volumes.yaml'
+                sh 'kubectl apply -f k8s/db-init-configmap.yaml'
+                sh 'kubectl apply -f k8s/mariadb-deployment.yaml'
+                sh 'kubectl apply -f k8s/mariadb-service.yaml'
+
+                sh """
+                sed -e "s|\\\$\\{DOCKER_REGISTRY\\}|${DOCKER_REGISTRY}|g" \\
+                    -e "s|\\\$\\{APP_VERSION\\}|${APP_VERSION}|g" k8s/flask-deployment.yaml | kubectl apply -f -
+                """
+
+                sh 'kubectl apply -f k8s/flask-service.yaml'
+                sh 'kubectl apply -f k8s/ingress.yaml'
+            }
+        }
+
+        stage('Verify Deployment') {
+            steps {
+                sh 'kubectl rollout status deployment/flask-app -n moto-app'
+            }
+        }
+    }
+
+    post {
+        success {
+            script {
+                def appName = "moto-app"
+                def appVersion = env.BUILD_NUMBER
+                echo "✅ Déploiement réussi !"
+                slackSend(
+                    color: 'good',
+                    message: "✅ Déploiement de ${appName}:${appVersion} réussi",
+                    channel: '#devops-alerts',
+                    tokenCredentialId: 'slack-token-id'
+                )
+            }
+        }
+        failure {
+            script {
+                def appName = "moto-app"
+                def appVersion = env.BUILD_NUMBER
+                echo "❌ Le déploiement a échoué."
+                slackSend(
+                    color: 'danger',
+                    message: "❌ Déploiement de ${appName}:${appVersion} échoué",
+                    channel: '#devops-alerts',
+                    tokenCredentialId: 'slack-token-id'
+                )
+            }
+        }
+        always {
+            node {
+                cleanWs()
+            }
+        }
+    }
+}
