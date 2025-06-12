@@ -1,0 +1,36 @@
+- name: Installer Jenkins sur vm1
+  hosts: jenkins
+  become: true
+  roles:
+    - jenkins
+  tags: jenkins
+
+- name: Déployer Kubernetes avec K3s sur vm2
+  hosts: kubernetes
+  become: true
+  roles:
+    - kubernetes
+  tags: k3s
+
+- name: Déployer les ressources applicatives dans K3s
+  hosts: kubernetes
+  become: true
+  tasks:
+    - name: Appliquer les manifests Kubernetes
+      shell: |
+        for file in $(ls /tmp/k8s/ | sort); do
+          kubectl apply -f "/tmp/k8s/$file"
+        done
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      args:
+        executable: /bin/bash
+      when: k3s_type == "master"
+  tags: deploy
+
+- name: Déployer Prometheus et Grafana sur vm3
+  hosts: monitoring
+  become: true
+  roles:
+    - monitoring
+  tags: monitoring

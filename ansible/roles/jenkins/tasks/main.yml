@@ -1,0 +1,139 @@
+    - name: Rechercher tous les fichiers sources contenant "jenkins"
+      find:
+        paths:
+          - /etc/apt/sources.list.d
+          - /etc/apt
+        patterns: '*jenkins*'
+      register: jenkins_source_files
+
+    - name: Supprimer tous les fichiers sources Jenkins
+      file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ jenkins_source_files.files }}"
+      when: jenkins_source_files.matched > 0
+
+    - name: Supprimer toute ligne Jenkins dans /etc/apt/sources.list
+      lineinfile:
+        path: /etc/apt/sources.list
+        regexp: 'jenkins'
+        state: absent
+        backrefs: yes
+
+    - name: Mise à jour du cache apt (avant installation de Java)
+      apt:
+        update_cache: yes
+
+    - name: Installation de Java (pré-requis pour Jenkins)
+      apt:
+        name: default-jdk
+        state: present
+
+    - name: Téléchargement de la clé GPG Jenkins
+      get_url:
+        url: https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
+        dest: /usr/share/keyrings/jenkins-keyring.asc
+        mode: '0644'
+
+    - name: Ajout du dépôt Jenkins avec clé GPG sécurisée
+      apt_repository:
+        repo: "deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/"
+        state: present
+        filename: jenkins
+
+    - name: Mise à jour du cache apt
+      apt:
+        update_cache: yes
+
+    - name: Installation de Jenkins
+      apt:
+        name: jenkins
+        state: present
+
+    - name: Démarrage du service Jenkins
+      service:
+        name: jenkins
+        state: started
+        enabled: yes
+
+    - name: Ouverture du port Jenkins (8080)
+      ufw:
+        rule: allow
+        port: "8080"
+        proto: tcp
+
+    - name: Attente que Jenkins soit disponible sur le port 8080
+      uri:
+        url: http://localhost:8080/login
+        status_code: 200
+      register: result
+      until: result.status == 200
+      retries: 60
+      delay: 2
+
+    - name: Récupération du mot de passe administrateur Jenkins
+      shell: cat /var/lib/jenkins/secrets/initialAdminPassword
+      register: jenkins_admin_password
+      changed_when: false
+
+    - name: Affichage du mot de passe Jenkins
+      debug:
+        msg: "Mot de passe administrateur Jenkins: {{ jenkins_admin_password.stdout }}"
+
+    - name: Téléchargement du Jenkins CLI
+      get_url:
+        url: http://localhost:8080/jnlpJars/jenkins-cli.jar
+        dest: /tmp/jenkins-cli.jar
+        mode: '0755'
+
+    - name: Installation des plugins Jenkins via Jenkins CLI
+      shell: >
+        java -jar /tmp/jenkins-cli.jar -s http://localhost:8080 -auth admin:{{ jenkins_admin_password.stdout }}
+        install-plugin {{ item }} -deploy
+      loop:
+        - git
+        - workflow-aggregator
+        - blueocean
+        - docker-workflow
+        - kubernetes
+        - ansible
+        - pipeline-utility-steps
+        - credentials-binding
+      notify: restart jenkins
+      environment:
+        JAVA_HOME: /usr/lib/jvm/java-11-openjdk-amd64
+      args:
+        creates: "/var/lib/jenkins/plugins/{{ item }}.jpi"
+    - name: Collecte des paquets installés
+      package_facts:
+        manager: auto
+
+    - name: Démarrage de Docker Registry (si Docker est installé)
+      docker_container:
+        name: registry
+        image: registry:2
+        restart_policy: always
+        ports:
+          - "5000:5000"
+        volumes:
+          - /var/lib/registry:/var/lib/registry
+        state: started
+      when: "'docker.io' in ansible_facts.packages or 'docker-ce' in ansible_facts.packages"
+
+    - name: Démarrage de Docker Registry (si Docker est installé)
+      docker_container:
+        name: registry
+        image: registry:2
+        restart_policy: always
+        ports:
+          - "5000:5000"
+        volumes:
+          - /var/lib/registry:/var/lib/registry
+        state: started
+      when: "'docker.io' in ansible_facts.packages or 'docker-ce' in ansible_facts.packages"
+
+    - name: Ouverture du port Docker Registry (5000)
+      ufw:
+        rule: allow
+        port: "5000"
+        proto: tcp

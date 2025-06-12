@@ -1,4 +1,4 @@
-version: '3.8'
+#version: '3.8'
 services:
   web:
     build:
@@ -7,7 +7,7 @@ services:
     ports:
       - "5000:5000"
     environment:
-      - FLASK_APP=app
+      - FLASK_APP=my-falsk-app
       - FLASK_ENV=development
       - DATABASE_URL=mysql+pymysql://moto_user:moto_password@db/moto_db
     volumes:

@@ -25,6 +25,9 @@ def create_app():
     # Enregistrer les blueprints
     app.register_blueprint(main)
     app.register_blueprint(auth)
+    
+   # from .monitoring import monitoring
+   # monitoring.register_metrics(app)
 
     # Créer les dossiers nécessaires s'ils n'existent pas
     os.makedirs(os.path.join(app.static_folder, 'img'), exist_ok=True)
@@ -37,3 +40,4 @@ from .models import User
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
+

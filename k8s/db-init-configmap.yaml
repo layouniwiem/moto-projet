@@ -1,0 +1,32 @@
+
+---
+# db-init-configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: db-init-script
+  namespace: moto-app
+data:
+  init.sql: |
+    CREATE TABLE IF NOT EXISTS moto (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      marque VARCHAR(50) NOT NULL,
+      modele VARCHAR(50) NOT NULL,
+      annee INT NOT NULL,
+      kilometrage INT,
+      prix FLOAT NOT NULL,
+      description TEXT,
+      date_ajout DATETIME DEFAULT CURRENT_TIMESTAMP,
+      image_url VARCHAR(200)
+    );
+    
+    -- Insertion d'utilisateurs de test
+    INSERT INTO user (username, email, password_hash) VALUES
+    ('admin', 'admin@example.com', 'pbkdf2:sha256:260000$hqhdH035aotJ6Xw0$359165cf690ea13c7f64c512078a3df41bdbc366543160b3721e49757fef306c'),
+    ('user1', 'user1@example.com', 'pbkdf2:sha256:260000$hqhdH035aotJ6Xw0$359165cf690ea13c7f64c512078a3df41bdbc366543160b3721e49757fef306c');
+    
+    -- Insertion de motos de test
+    INSERT INTO moto (marque, modele, annee, kilometrage, prix, description) VALUES
+    ('Honda', 'CBR 600RR', 2018, 15000, 8500, 'Excellent état, entretien régulier'),
+    ('Yamaha', 'MT-07', 2020, 8000, 6500, 'Première main, comme neuve'),
+    ('Kawasaki', 'Z900', 2021, 5000, 9000, 'Garantie constructeur, options incluses');

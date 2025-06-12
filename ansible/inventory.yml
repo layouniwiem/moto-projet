@@ -1,0 +1,32 @@
+# inventory.yml
+all:
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+    ansible_user: root
+    ansible_become: yes
+    ansible_become_method: sudo
+    project_name: moto-app
+    docker_registry: localhost:5000
+    app_version: 1.0.0
+    domain_name: moto-app.example.com
+
+  children:
+    jenkins:
+      hosts:
+        vm1:
+          ansible_host: 192.168.1.77
+          ansible_port: 22
+          node_role: ci
+    kubernetes:
+      hosts:
+        vm2:
+          ansible_host: 192.168.1.40
+          ansible_port: 22
+          node_role: prod
+          k3s_type: master
+    monitoring:
+      hosts:
+        vm3:
+          ansible_host: 192.168.1.78
+          ansible_port: 22
+          node_role: monitoring

@@ -1,23 +1,67 @@
 # Dockerfile.web
-FROM python:3.9-slim
+#FROM python:3.9-slim
 
-WORKDIR /app
+#WORKDIR /app
 
 # Installation des dépendances système nécessaires 
-RUN apt-get update && apt-get install -y \ 
+#RUN apt-get update && apt-get install -y \ 
+#    build-essential \
+#    python3-dev \
+ #   default-libmysqlclient-dev \
+  #  && rm -rf /var/lib/apt/lists/*
+
+# Copie des requirements et installation
+#COPY requirements.txt .
+#RUN pip install --no-cache-dir -r requirements.txt
+
+# Copie du reste de l'application
+#COPY . .
+
+#ENV FLASK_APP=app
+#ENV PYTHONUNBUFFERED=1
+
+#CMD ["flask", "run", "--host=0.0.0.0"]
+# Dockerfile.web
+FROM python:3.9-slim
+WORKDIR /app
+
+# Installation des dépendances système nécessaires, y compris le client MySQL
+RUN apt-get update && apt-get install -y \
     build-essential \
     python3-dev \
     default-libmysqlclient-dev \
+    default-mysql-client \
     && rm -rf /var/lib/apt/lists/*
+
+# Installation des packages Python pour le monitoring
+RUN pip install --no-cache-dir prometheus-flask-exporter
 
 # Copie des requirements et installation
 COPY requirements.txt .
+COPY ./static /app/static
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copie du reste de l'application
-COPY . .
+# Créer les répertoires nécessaires
+RUN mkdir -p /app/app/static/img
 
+# Copie du reste de l'application
+COPY app /app/app
+COPY static /app/static
+COPY templates /app/templates
+COPY run.py /app/
+
+# Exposer les ports
+EXPOSE 5000
+
+# Définir les variables d'environnement
 ENV FLASK_APP=app
 ENV PYTHONUNBUFFERED=1
+ENV FLASK_ENV=production
+ENV DATABASE_URL=mysql+pymysql://moto_user:moto_password@mariadb:3306/moto_db
 
-CMD ["flask", "run", "--host=0.0.0.0"]
+# Script d'entrée
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "4", "run:app"]

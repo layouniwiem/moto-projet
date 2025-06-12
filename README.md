@@ -1,176 +1,187 @@
-# Application Web de Vente de Motos
+Voici une **documentation complète** pour déployer le projet *"Application Web de Vente de Motos"* avec **Kubernetes, Ansible, Docker et Jenkins**, basée sur les deux documents fournis.
 
-## Description
-Application web développée avec Flask permettant de visualiser et gérer des annonces de motos d'occasion. L'application inclut une authentification utilisateur et une interface responsive pour afficher les détails des motos.
+---
 
-## Fonctionnalités
-- 📱 Interface responsive
-- 🔐 Système d'authentification
-- 📋 Liste des motos disponibles
-- 🔍 Page de détails pour chaque moto
-- 💾 Stockage des données dans MariaDB
+#  Documentation de Déploiement du Projet Moto-App
 
-## Prérequis
-- Docker Desktop
-- Docker Compose
-- Git (optionnel)
+##  1. Prérequis
 
-## Structure du Projet
-```
-moto-project/
-├── app/
-│   ├── __init__.py
-│   ├── models.py
-│   ├── routes.py
-│   ├── forms.py
-│   └── config.py
-├── templates/
-│   ├── base.html
-│   ├── home.html
-│   ├── login.html
-│   └── moto_details.html
-├── static/
-│   ├── css/
-│   │   └── style.css
-│   └── img/
-├── docker-compose.yml
-├── Dockerfile.web
-├── init.sql
-└── requirements.txt
-```
+*  Docker / Docker Compose
+*  Kubernetes (Minikube ou K3s)
+*  Ansible (2.10+)
+*  Jenkins (pour CI/CD)
+*  Accès à DockerHub (ex. : `layouniwiem/devops_riders`)
+*  Accès sudo sur les machines distantes (via SSH)
 
-## Installation
+---
 
-### 1. Cloner le projet (optionnel)
+##  2. Structure Technique
+
+* **Backend** : Flask (Python)
+* **Base de données** : MariaDB
+* **Déploiement** :
+
+  * Kubernetes (manifestes K8s)
+  * Docker (image containerisée)
+  * Ansible (automatisation)
+  * Jenkins (CI/CD)
+  * Monitoring (Prometheus, Grafana)
+
+---
+
+##  3. Déploiement Manuel Kubernetes (via scripts)
+
+### Étapes :
+
+1. **Construire l’image Docker :**
+
 ```bash
-git clone <url-du-projet>
-cd moto-project
 cd app
+docker build -t my-flask-app .
+docker tag my-flask-app layouniwiem/devops_riders:latest
+docker push layouniwiem/devops_riders:latest
 ```
 
-### 2. Lancer l'application avec Docker
+2. **Appliquer les manifestes Kubernetes :**
+
 ```bash
-# Construire et démarrer les conteneurs
-docker-compose up --build
-
-# Pour lancer en arrière-plan
-docker-compose up -d --build
+kubectl create namespace moto-app
+kubectl apply -f k8s/namespace.yaml
+kubectl apply -f k8s/secrets.yaml
+kubectl apply -f k8s/config-map.yaml
+kubectl apply -f k8s/persistent-volumes.yaml
+kubectl apply -f k8s/db-init-configmap.yaml
+kubectl apply -f k8s/mariadb-deployment.yaml
+kubectl apply -f k8s/mariadb-service.yaml
+kubectl apply -f k8s/flask-deployment.yaml
+kubectl apply -f k8s/flask-service.yaml
+kubectl apply -f k8s/ingress.yaml
 ```
 
-### 3. Accéder à l'application
-- Interface web : http://localhost:5000
-- Base de données : localhost:3306
+3. **Tester localement l’application :**
 
-## Utilisation
-
-### Comptes de test
-```
-Admin:
-- Utilisateur: admin
-- Mot de passe: admin123
-
-Utilisateur:
-- Utilisateur: user1
-- Mot de passe: user123
-```
-
-### Commandes Docker utiles
 ```bash
-# Arrêter l'application
-docker-compose down
+kubectl port-forward svc/flask-app 8080:5000 -n moto-app
+curl http://localhost:8080
+```
+
+---
+
+##  4. Déploiement Automatisé avec Ansible
+
+###  Rôles disponibles :
+
+* `roles/docker`
+* `roles/database`
+* `roles/app`
+* `roles/jenkins`
+* `roles/kubernetes`
+* `roles/monitoring`
+
+###  Exemple de Playbook :
+
+```yaml
+- name: Setup complet
+  hosts: all
+  become: true
+  roles:
+    - docker
+    - database
+    - app
+    - kubernetes
+    - jenkins
+    - monitoring
+```
+
+Fichiers d’inventaire : `inventory.ini` / `inventory.yml`
+Variables comme `mariadb_user`, `app_repo_url`, etc., sont définies dans les `group_vars` ou dans les fichiers `vars/*.yml`.
+
+---
+
+##  5. Intégration Continue (CI/CD) avec Jenkins
+
+* Jenkins est déployé via Ansible (`roles/jenkins`)
+* L’image de l’application est buildée puis pushée vers Docker Hub
+* Déclenchement du pipeline :
+
+  * Build Docker
+  * Push vers Docker Hub
+  * Déploiement sur cluster via `kubectl`
+
+---
+
+##  6. Monitoring
+
+### Outils utilisés :
+
+* **Prometheus** pour la collecte des métriques
+* **Node Exporter** pour les métriques machines
+* **Grafana** pour les dashboards
+
+### Déploiement :
+
+```yaml
+- name: Monitoring
+  hosts: localhost
+  become: true
+  roles:
+    - monitoring
+```
+
+---
+
+##  7. Tests et Validation
+
+Un test unitaire de la route d'accueil est disponible dans `tests/test_home.py` :
+
+```python
+def test_homepage():
+    app = create_app()
+    client = app.test_client()
+    response = client.get('/')
+    assert response.status_code == 200
+    assert b"Motos" in response.data
+```
+
+---
+
+##  8. Accès à l'application
+
+* Frontend : `http://localhost:8080` ou `http://moto-app.example.com` via ingress
+* Base de données : via `kubectl exec` ou `docker exec` si local
+
+---
+
+##  Commandes Utiles
+
+```bash
+# Lister les pods
+kubectl get pods -n moto-app
+
+# Vérifier l'état du déploiement
+kubectl rollout status deployment/flask-app -n moto-app
 
 # Voir les logs
-docker-compose logs -f
+kubectl logs -l app=flask-app -n moto-app
 
-# Redémarrer un service
-docker-compose restart web
-
-# Accéder au shell du conteneur web
-docker-compose exec web bash
-
-# Accéder à la base de données
-docker-compose exec db mysql -u moto_user -p moto_db
+# Tester l'accès via ingress
+curl http://moto-app.example.com
 ```
 
-## Configuration
+---
 
-### Variables d'environnement
-L'application utilise les variables d'environnement suivantes :
-```
-DATABASE_URL=mysql+pymysql://moto_user:moto_password@db/moto_db
-FLASK_APP=app
-FLASK_ENV=development
-```
+##  Utilisateurs de Test
 
-### Base de données
-La base de données est automatiquement initialisée avec :
-- Tables nécessaires
-- Utilisateurs de test
-- Quelques motos d'exemple
+```txt
+Admin :
+  - utilisateur : admin
+  - mot de passe : admin123
 
-## Développement
-
-### Structure de la base de données
-```sql
-User:
-- id (INT, PRIMARY KEY)
-- username (VARCHAR(64))
-- email (VARCHAR(120))
-- password_hash (VARCHAR(128))
-
-Moto:
-- id (INT, PRIMARY KEY)
-- marque (VARCHAR(50))
-- modele (VARCHAR(50))
-- annee (INT)
-- kilometrage (INT)
-- prix (FLOAT)
-- description (TEXT)
-- date_ajout (DATETIME)
-- image_url (VARCHAR(200))
+Utilisateur :
+  - utilisateur : user1
+  - mot de passe : user123
 ```
 
-### Ajouter une nouvelle moto
-```sql
-INSERT INTO moto (marque, modele, annee, kilometrage, prix, description)
-VALUES ('Marque', 'Modèle', 2023, 1000, 10000, 'Description');
-```
+---
 
-## Sécurité
-- Authentification requise pour certaines actions
-- Mots de passe hashés avec Werkzeug
-- Protection CSRF active
-- Sessions sécurisées
-
-## Dépannage
-
-### Problèmes courants
-
-1. Docker ne démarre pas
-```bash
-# Vérifier le statut de Docker
-docker --version
-docker-compose --version
-```
-
-2. Base de données inaccessible
-```bash
-# Vérifier les logs de la base de données
-docker-compose logs db
-```
-
-3. Application web inaccessible
-```bash
-# Vérifier les logs de l'application
-docker-compose logs web
-```
-
-## Support
-
-Pour tout problème ou question :
-1. Vérifier les logs Docker
-2. Consulter la documentation
-3. Contacter l'équipe de développement
-
-## License
-MIT License
+Souhaitez-vous que je génère cette documentation au format PDF ou Markdown téléchargeable ?
