@@ -101,11 +101,11 @@ pipeline {
     post {
         success {
             echo '✅ Déploiement réussi !'
-            slackSend(color: 'good', message: "✅ Déploiement de ${APP_NAME}:${APP_VERSION} réussi", channel: '#devops-alerts', tokenCredentialId: 'slack-token-id')
+           # slackSend(color: 'good', message: "✅ Déploiement de ${APP_NAME}:${APP_VERSION} réussi", channel: '#devops-alerts', tokenCredentialId: 'slack-token-id')
         }
         failure {
             echo '❌ Le déploiement a échoué.'
-            slackSend(color: 'danger', message: "❌ Déploiement de ${APP_NAME}:${APP_VERSION} échoué", channel: '#devops-alerts', tokenCredentialId: 'slack-token-id')
+           # slackSend(color: 'danger', message: "❌ Déploiement de ${APP_NAME}:${APP_VERSION} échoué", channel: '#devops-alerts', tokenCredentialId: 'slack-token-id')
         }
         always {
             cleanWs()
