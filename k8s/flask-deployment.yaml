@@ -77,4 +77,4 @@ spec:
       volumes:
         - name: flask-uploads
           persistentVolumeClaim:
-            claimName: flask-uploads-pvc
+            claimName: flask-uploads-pvc-v2
