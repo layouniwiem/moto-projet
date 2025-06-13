@@ -11,7 +11,7 @@ def test_homepage():
 
     with app.app_context():
         db.init_app(app)
-        db.create_all()
+       # db.create_all()
 
     with app.test_client() as client:
         response = client.get('/')
