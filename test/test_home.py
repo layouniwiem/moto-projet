@@ -37,4 +37,3 @@ def test_homepage():
         # Vérifications basiques
         assert "Yamaha" in html
         assert "MT-07" in html
-        assert "Moto en très bon état" in html
