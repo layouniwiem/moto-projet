@@ -17,6 +17,9 @@ spec:
         app: flask-app
 
     spec:
+      nodeSelector:
+        kubernetes.io/hostname: moto-app.example.com
+
       containers:
         - name: flask-app
           image: layouniwiem/devops_riders:latest
@@ -42,7 +45,7 @@ spec:
                   name: app-config
                   key: SECRET_KEY
             - name: DATABASE_URL
-              value: "mysql+pymysql://user:pass@mariadb:3306/dbname" # ← ou injectée via configMap
+              value: "mysql+pymysql://user:pass@mariadb:3306/dbname"
 
           envFrom:
             - secretRef:
