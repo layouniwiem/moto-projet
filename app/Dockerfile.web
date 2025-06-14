@@ -49,6 +49,7 @@ COPY app /app/app
 COPY static /app/static
 COPY templates /app/templates
 COPY run.py /app/
+COPY monitoring.py /app/
 
 # Exposer les ports
 EXPOSE 5000
