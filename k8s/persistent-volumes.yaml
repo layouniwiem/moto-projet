@@ -9,9 +9,9 @@ spec:
   accessModes:
     - ReadWriteMany
   storageClassName: local-path
-  persistentVolumeReclaimPolicy: Retain
   hostPath:
     path: /mnt/data/flask-uploads
+  persistentVolumeReclaimPolicy: Retain
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim

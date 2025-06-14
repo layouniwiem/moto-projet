@@ -22,7 +22,7 @@ spec:
 
       containers:
         - name: flask-app
-          image: layouniwiem/devops_riders:latest
+          image: docker.io/layouniwiem/moto-app:${APP_VERSION}
           imagePullPolicy: Always
 
           ports:
@@ -44,8 +44,12 @@ spec:
                 configMapKeyRef:
                   name: app-config
                   key: SECRET_KEY
-            - name: DATABASE_URL
-              value: "mysql+pymysql://user:pass@mariadb:3306/dbname"
+            # Optionnel si présent dans secret db-credentials
+            #- name: DATABASE_URL
+            #  valueFrom:
+            #    secretKeyRef:
+            #      name: db-credentials
+            #      key: DATABASE_URL
 
           envFrom:
             - secretRef:
