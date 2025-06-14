@@ -3,85 +3,59 @@ kind: Deployment
 metadata:
   name: flask-app
   namespace: moto-app
-
+  labels:
+    app: flask-app
 spec:
   replicas: 2
-
   selector:
     matchLabels:
       app: flask-app
-
   template:
     metadata:
       labels:
         app: flask-app
-
     spec:
-      nodeSelector:
-        kubernetes.io/hostname: moto-app.example.com
-
       containers:
-        - name: flask-app
-          image: docker.io/layouniwiem/moto-app:${APP_VERSION}
-          imagePullPolicy: Always
-
-          ports:
-            - containerPort: 5000
-
-          env:
-            - name: FLASK_APP
-              valueFrom:
-                configMapKeyRef:
-                  name: app-config
-                  key: FLASK_APP
-            - name: FLASK_ENV
-              valueFrom:
-                configMapKeyRef:
-                  name: app-config
-                  key: FLASK_ENV
-            - name: SECRET_KEY
-              valueFrom:
-                configMapKeyRef:
-                  name: app-config
-                  key: SECRET_KEY
-            # Optionnel si présent dans secret db-credentials
-            #- name: DATABASE_URL
-            #  valueFrom:
-            #    secretKeyRef:
-            #      name: db-credentials
-            #      key: DATABASE_URL
-
-          envFrom:
-            - secretRef:
+      - name: flask-app
+        image: docker.io/layouniwiem/moto-app:latest  # Remplace par la bonne image/tag
+        ports:
+        - containerPort: 5000
+        env:
+          - name: MYSQL_USER
+            valueFrom:
+              secretKeyRef:
                 name: db-credentials
-
-          volumeMounts:
-            - name: flask-uploads
-              mountPath: /app/static/img
-
-          readinessProbe:
-            httpGet:
-              path: /
-              port: 5000
-            initialDelaySeconds: 10
-            periodSeconds: 5
-
-          livenessProbe:
-            httpGet:
-              path: /
-              port: 5000
-            initialDelaySeconds: 30
-            periodSeconds: 15
-
-          resources:
-            limits:
-              cpu: 500m
-              memory: 512Mi
-            requests:
-              cpu: 200m
-              memory: 256Mi
-
-      volumes:
-        - name: flask-uploads
-          persistentVolumeClaim:
-            claimName: flask-uploads-pvc
+                key: MYSQL_USER
+          - name: MYSQL_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: db-credentials
+                key: MYSQL_PASSWORD
+          - name: MYSQL_DATABASE
+            valueFrom:
+              secretKeyRef:
+                name: db-credentials
+                key: MYSQL_DATABASE
+          - name: MYSQL_HOST
+            value: mariadb  # Nom du service MariaDB dans Kubernetes
+          - name: FLASK_ENV
+            value: production
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "250m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 5000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 5000
+          initialDelaySeconds: 30
+          periodSeconds: 10
