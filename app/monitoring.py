@@ -1,5 +1,5 @@
 # monitoring.py
-from app.monitoring.monitoring import init_metrics
+from monitoring import init_metrics
 
 from prometheus_flask_exporter import PrometheusMetrics
 from flask import request
