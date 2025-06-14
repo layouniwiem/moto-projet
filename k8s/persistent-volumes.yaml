@@ -1,15 +1,4 @@
 ---
-#apiVersion: v1
-#kind: PersistentVolumeClaim
-#metadata:
-#  name: flask-uploads-pvc
- # namespace: moto-app
-#spec:
-#  accessModes:
- #   - ReadWriteMany
- # resources:
- #   requests:
-  #    storage: 2Gi
 apiVersion: v1
 kind: PersistentVolume
 metadata:
@@ -20,6 +9,7 @@ spec:
   accessModes:
     - ReadWriteMany
   storageClassName: local-path
+  persistentVolumeReclaimPolicy: Retain
   hostPath:
     path: /mnt/data/flask-uploads
 ---
@@ -27,6 +17,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: flask-uploads-pvc
+  namespace: moto-app
 spec:
   accessModes:
     - ReadWriteMany
@@ -34,4 +25,3 @@ spec:
     requests:
       storage: 2Gi
   storageClassName: local-path
-
