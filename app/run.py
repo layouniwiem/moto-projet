@@ -1,10 +1,12 @@
 
 # run.py (mise à jour pour inclure le monitoring)
 from app import create_app
-from monitoring import init_metrics
+from monitoring import setup_metrics  # Assurez-vous du bon chemin
+
 
 app = create_app()
-metrics_tools = init_metrics(app)
+setup_metrics(app) 
+
 
 # Ajouter les décorateurs de métriques aux routes
 from app.routes import main, auth
