@@ -1,35 +1,36 @@
-# monitoring.py
+# app/monitoring.py
 
 from prometheus_flask_exporter import PrometheusMetrics
+from prometheus_client import Counter
+from flask import request
 
-# Singleton pattern to avoid double registration
+# Singleton global to avoid double registration
 metrics = None
+custom_counter = None
 
 def setup_metrics(app):
-    global metrics
+    global metrics, custom_counter
+
     if metrics is not None:
         return metrics  # Already initialized, avoid duplicate
 
     # Initialize PrometheusMetrics
     metrics = PrometheusMetrics(app)
 
-    # Add custom metrics if needed
-    # Example: custom counter (different name to avoid collision with default)
-    from prometheus_client import Counter
-
+    # Custom metric with unique name
     custom_counter = Counter(
-        'custom_http_request_total',  # Make sure name is unique
+        'custom_http_request_total',
         'Total custom HTTP Requests',
         ['method', 'endpoint']
     )
 
-    # Record requests (Flask signal hook)
+    # Track request method and endpoint
     @app.before_request
     def before_request():
-        if metrics.app:
+        if request.endpoint:
             custom_counter.labels(
-                method=getattr(app.request, 'method', 'unknown'),
-                endpoint=getattr(app.request, 'endpoint', 'unknown')
+                method=request.method,
+                endpoint=request.endpoint
             ).inc()
 
     return metrics
