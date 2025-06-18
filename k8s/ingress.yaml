@@ -1,27 +1,6 @@
 
 ---
 # ingress.yaml
-#apiVersion: networking.k8s.io/v1
-#kind: Ingress
-#metadata:
-#  name: moto-app-ingress
-#  namespace: moto-app
-#  annotations:
-#    nginx.ingress.kubernetes.io/ssl-redirect: "false"
-#    nginx.ingress.kubernetes.io/use-regex: "true"
-#spec:
-#  ingressClassName: nginx
-#  rules:
-#  - host: moto-app.example.com
-#    http:
- #     paths:
-  #    - path: /
-   #     pathType: Prefix
-    #    backend:
-     #     service:
-      #      name: flask-app
-       #     port:
-         #     number: 80#
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -41,6 +20,6 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: flask-service       # <-- ✅ Nom du service correct
+            name: flask-app
             port:
-              number: 5000            # <-- ✅ Port de ton app Flask
+              number: 80
