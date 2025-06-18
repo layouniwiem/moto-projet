@@ -7,10 +7,10 @@
     node_exporter_version: "1.8.1"
 
   tasks:
-    - name: Nettoyer le cache APT
-      apt:
-        autoclean: yes
-        autoremove: yes
+    - name: Nettoyage initial du cache APT
+      shell: |
+        apt-get clean
+        rm -rf /var/lib/apt/lists/*
 
     - name: Mise à jour du cache APT (avec retries)
       apt:
@@ -70,7 +70,6 @@
           apt_repository:
             repo: "deb [arch=amd64] https://download.docker.com/linux/debian {{ ansible_distribution_release }} stable"
             state: present
-          notify: Update apt cache
 
         - name: Installer Docker CE et dépendances
           apt:
@@ -128,15 +127,20 @@
               ExecStart=/usr/local/bin/node_exporter
 
               [Install]
-              WantedBy=default.target
+              WantedBy=multi-user.target
           mode: '0644'
-          notify: Restart node_exporter
 
-        - name: Activer et démarrer Node Exporter
+        - name: Démarrer et activer Node Exporter
           systemd:
             name: node_exporter
             enabled: yes
             state: started
+          register: node_exporter_status
+
+        - name: Reload systemd if Node Exporter service changed
+          systemd:
+            daemon_reload: yes
+          when: node_exporter_status.changed
 
     - name: Configurer Fail2Ban
       copy:
@@ -153,16 +157,5 @@
     - name: Redémarrer Fail2Ban
       service:
         name: fail2ban
-        state: restarted
-        enabled: yes
-
-  handlers:
-    - name: Update apt cache
-      apt:
-        update_cache: yes
-
-    - name: Restart node_exporter
-      systemd:
-        name: node_exporter
         state: restarted
         enabled: yes
