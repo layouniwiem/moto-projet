@@ -11,10 +11,8 @@
       shell: |
         apt-get clean
         rm -rf /var/lib/apt/lists/*
-      args:
-        warn: false
 
-    - name: Mise à jour du cache APT (avec résilience)
+    - name: Mise à jour du cache APT (avec retries)
       apt:
         update_cache: yes
         cache_valid_time: 3600
@@ -22,6 +20,11 @@
       retries: 5
       delay: 10
       until: apt_update is succeeded
+
+    - name: Mise à niveau des paquets
+      apt:
+        upgrade: dist
+      register: upgrade_result
 
     - name: Installation des paquets essentiels
       apt:
@@ -39,60 +42,102 @@
           - lsb-release
           - ufw
           - fail2ban
-        state: latest
-        install_recommends: yes
-      environment:
-        DEBIAN_FRONTEND: noninteractive
+        state: present
+        update_cache: yes
 
-    - name: Définir le fuseau horaire
+    - name: Configuration du fuseau horaire
       timezone:
         name: Europe/Paris
 
-    - name: Activer le pare-feu UFW par défaut
+    - name: Configuration UFW - activation du pare-feu
       ufw:
         state: enabled
         policy: deny
 
-    - name: Autoriser le port SSH
+    - name: Autoriser SSH via UFW
       ufw:
         rule: allow
-        port: "22"
+        port: 22
         proto: tcp
 
-    - name: Ajouter la clé GPG Docker
-      apt_key:
-        url: https://download.docker.com/linux/debian/gpg
-        state: present
+    - name: Installation de Docker
+      block:
+        - name: Ajouter clé GPG Docker
+          apt_key:
+            url: https://download.docker.com/linux/debian/gpg
+            state: present
 
-    - name: Ajouter le dépôt Docker
-      apt_repository:
-        repo: "deb [arch=amd64] https://download.docker.com/linux/debian {{ ansible_distribution_release | lower }} stable"
-        state: present
-        filename: docker
+        - name: Ajouter dépôt Docker
+          apt_repository:
+            repo: "deb [arch=amd64] https://download.docker.com/linux/debian {{ ansible_distribution_release }} stable"
+            state: present
 
-    - name: Installer Docker
-      apt:
-        name:
-          - docker-ce
-          - docker-ce-cli
-          - containerd.io
-          - docker-compose-plugin
-        state: latest
-        update_cache: yes
+        - name: Installer Docker CE et dépendances
+          apt:
+            name:
+              - docker-ce
+              - docker-ce-cli
+              - containerd.io
+              - docker-compose-plugin
+            state: present
+            update_cache: yes
 
-    - name: Ajouter l'utilisateur courant au groupe Docker
-      user:
-        name: "{{ ansible_user }}"
-        groups: docker
-        append: yes
+        - name: Ajouter l'utilisateur ansible au groupe docker
+          user:
+            name: "{{ ansible_user }}"
+            groups: docker
+            append: yes
 
-    - name: Activer Docker au démarrage
-      service:
-        name: docker
-        enabled: yes
-        state: started
+        - name: Activer et démarrer Docker
+          service:
+            name: docker
+            state: started
+            enabled: yes
 
-    - name: Configurer fail2ban
+    - name: Installer Node Exporter
+      block:
+        - name: Télécharger Node Exporter
+          get_url:
+            url: "https://github.com/prometheus/node_exporter/releases/download/v{{ node_exporter_version }}/node_exporter-{{ node_exporter_version }}.linux-amd64.tar.gz"
+            dest: /tmp/node_exporter.tar.gz
+            mode: '0644'
+
+        - name: Extraire Node Exporter
+          unarchive:
+            src: /tmp/node_exporter.tar.gz
+            dest: /tmp/
+            remote_src: yes
+
+        - name: Copier binaire Node Exporter
+          copy:
+            src: "/tmp/node_exporter-{{ node_exporter_version }}.linux-amd64/node_exporter"
+            dest: /usr/local/bin/node_exporter
+            mode: '0755'
+
+        - name: Installer le service systemd Node Exporter
+          copy:
+            dest: /etc/systemd/system/node_exporter.service
+            content: |
+              [Unit]
+              Description=Node Exporter
+              Wants=network-online.target
+              After=network-online.target
+
+              [Service]
+              User=nobody
+              ExecStart=/usr/local/bin/node_exporter
+
+              [Install]
+              WantedBy=default.target
+          mode: '0644'
+
+        - name: Démarrer et activer Node Exporter
+          systemd:
+            name: node_exporter
+            enabled: yes
+            state: started
+
+    - name: Configurer Fail2Ban
       copy:
         dest: /etc/fail2ban/jail.local
         content: |
@@ -104,54 +149,8 @@
           [sshd]
           enabled = true
 
-    - name: Redémarrer fail2ban
+    - name: Redémarrer Fail2Ban
       service:
         name: fail2ban
         state: restarted
         enabled: yes
-
-    - name: Créer un utilisateur node_exporter
-      user:
-        name: node_exporter
-        shell: /usr/sbin/nologin
-        system: yes
-        create_home: no
-
-    - name: Télécharger Node Exporter
-      get_url:
-        url: "https://github.com/prometheus/node_exporter/releases/download/v{{ node_exporter_version }}/node_exporter-{{ node_exporter_version }}.linux-amd64.tar.gz"
-        dest: "/tmp/node_exporter.tar.gz"
-        mode: '0644'
-
-    - name: Extraire Node Exporter
-      unarchive:
-        src: "/tmp/node_exporter.tar.gz"
-        dest: "/usr/local/bin/"
-        remote_src: yes
-        extra_opts: [--strip-components=1]
-        creates: "/usr/local/bin/node_exporter"
-
-    - name: Créer le service systemd pour Node Exporter
-      copy:
-        dest: /etc/systemd/system/node_exporter.service
-        content: |
-          [Unit]
-          Description=Node Exporter
-          Wants=network-online.target
-          After=network-online.target
-
-          [Service]
-          User=node_exporter
-          Group=node_exporter
-          Type=simple
-          ExecStart=/usr/local/bin/node_exporter
-
-          [Install]
-          WantedBy=default.target
-
-    - name: Activer et démarrer Node Exporter
-      systemd:
-        name: node_exporter
-        enabled: yes
-        state: started
-        daemon_reload: yes
