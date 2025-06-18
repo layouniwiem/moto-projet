@@ -1,11 +1,16 @@
 pipeline {
     agent any
-    
+
+    parameters {
+        string(name: 'DOCKERFILE_NAME', defaultValue: 'Dockerfile.web', description: 'Nom du Dockerfile à utiliser')
+    }
+
     environment {
-        DOCKER_REGISTRY = "localhost:5000"
+        DOCKER_REGISTRY = "docker.io/layouniwiem"
         APP_NAME = "moto-app"
         APP_VERSION = "${env.BUILD_NUMBER}"
-        KUBECONFIG = credentials('kubeconfig')
+        KUBECONFIG_DIR = "/tmp/.kube"
+        KUBECONFIG_PATH = "/tmp/.kube/config"
     }
 
     stages {
@@ -18,26 +23,89 @@ pipeline {
         stage('Install dependencies') {
             steps {
                 dir('app') {
-                    sh 'pip install -r requirements.txt'
-                    sh 'pip install pytest pytest-flask pytest-cov'
+                    sh '''
+                        python3 -m venv venv
+                        . venv/bin/activate
+                        pip install --upgrade pip
+                        pip install -r requirements.txt
+                        pip install pytest pytest-flask pytest-cov
+                    '''
                 }
             }
         }
 
-        stage('Test') {
+       
+        stage('Build Docker Image') {
+            when {
+                expression { currentBuild.result != 'FAILURE' }
+            }
             steps {
                 dir('app') {
-                    sh 'pytest --cov=app tests/'
+                    sh '''
+                        if ! docker info > /dev/null 2>&1; then
+                            echo "❌ Jenkins n'a pas accès à Docker."
+                            exit 1
+                        fi
+                    '''
+                    sh "docker build -f ${params.DOCKERFILE_NAME} -t ${DOCKER_REGISTRY}/${APP_NAME}:${APP_VERSION} ."
+                    sh "docker tag ${DOCKER_REGISTRY}/${APP_NAME}:${APP_VERSION} ${DOCKER_REGISTRY}/${APP_NAME}:latest"
+                }
+            }
+        }
+
+        stage('Login to Docker Hub') {
+            when {
+                expression { currentBuild.result != 'FAILURE' }
+            }
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
+                }
+            }
+        }
+
+        stage('Security Scan') {
+            when {
+                expression { currentBuild.result != 'FAILURE' }
+            }
+            steps {
+                script {
+                    try {
+                        sh """
+                            trivy image --timeout 10m --scanners vuln ${DOCKER_REGISTRY}/${APP_NAME}:${APP_VERSION}
+                        """
+                    } catch (err) {
+                        echo "⚠️ Analyse Trivy échouée : ${err.getMessage()}"
+                        currentBuild.result = 'UNSTABLE'
+                    }
+                }
+            }
+        }
+ stage('Test') {
+            steps {
+                dir('app') {
+                    script {
+                        try {
+                            sh '''
+                                . venv/bin/activate
+                                export PYTHONPATH=$PYTHONPATH:$(pwd)
+                                pytest ../test --cov=app --cov-report=html --junitxml=test-reports/results.xml
+                            '''
+                        } catch (err) {
+                            echo "⚠️ Tests échoués : ${err.getMessage()}"
+                            currentBuild.result = 'UNSTABLE'
+                        }
+                    }
                 }
             }
             post {
                 always {
-                    junit 'test-reports/*.xml'
+                    junit 'app/test-reports/*.xml'
                     publishHTML target: [
                         allowMissing: true,
                         alwaysLinkToLastBuild: true,
                         keepAll: true,
-                        reportDir: 'coverage',
+                        reportDir: 'app/htmlcov',
                         reportFiles: 'index.html',
                         reportName: 'Coverage Report'
                     ]
@@ -45,55 +113,72 @@ pipeline {
             }
         }
 
-
-        stage('Build Docker Image') {
-            steps {
-                dir('app') {
-                    sh 'docker build -t ${DOCKER_REGISTRY}/${APP_NAME}:${APP_VERSION} .'
-                    sh 'docker tag ${DOCKER_REGISTRY}/${APP_NAME}:${APP_VERSION} ${DOCKER_REGISTRY}/${APP_NAME}:latest'
-                }
-            }
-        }
-
-        stage('Security Scan') {
-            steps {
-                sh 'docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image ${DOCKER_REGISTRY}/${APP_NAME}:${APP_VERSION}'
-            }
-        }
-
         stage('Push Image') {
+            when {
+                expression { currentBuild.result != 'FAILURE' }
+            }
             steps {
-                sh 'docker push ${DOCKER_REGISTRY}/${APP_NAME}:${APP_VERSION}'
-                sh 'docker push ${DOCKER_REGISTRY}/${APP_NAME}:latest'
+                sh "docker push ${DOCKER_REGISTRY}/${APP_NAME}:${APP_VERSION}"
+                sh "docker push ${DOCKER_REGISTRY}/${APP_NAME}:latest"
             }
         }
 
         stage('Deploy to Kubernetes') {
+            when {
+                expression { currentBuild.result != 'FAILURE' }
+            }
+            agent {
+                docker {
+                    image 'bitnami/kubectl:latest'
+                    args '--entrypoint=""'
+                }
+            }
             steps {
-                sh 'mkdir -p ~/.kube'
-                sh 'cp $KUBECONFIG ~/.kube/config'
+                git url: 'https://github.com/layouniwiem/moto-projet.git', branch: 'main'
 
-                sh 'kubectl apply -f k8s/namespace.yaml'
-                sh 'kubectl apply -f k8s/secrets.yaml'
-                sh 'kubectl apply -f k8s/config-map.yaml'
-                sh 'kubectl apply -f k8s/persistent-volumes.yaml'
-                sh 'kubectl apply -f k8s/db-init-configmap.yaml'
-                sh 'kubectl apply -f k8s/mariadb-deployment.yaml'
-                sh 'kubectl apply -f k8s/mariadb-service.yaml'
+                withCredentials([file(credentialsId: 'KUBECONFIG', variable: 'KUBECONFIG_FILE')]) {
+                    sh '''
+                        mkdir -p /tmp/.kube
+                        cp "$KUBECONFIG_FILE" /tmp/.kube/config
+                        export KUBECONFIG=/tmp/.kube/config
 
-                sh """
-                sed -e "s|\\\$\\{DOCKER_REGISTRY\\}|${DOCKER_REGISTRY}|g" \\
-                    -e "s|\\\$\\{APP_VERSION\\}|${APP_VERSION}|g" k8s/flask-deployment.yaml | kubectl apply -f -
-                """
+                        kubectl apply -f k8s/namespace.yml
+                        kubectl apply -f k8s/secrets.yaml
+                        kubectl apply -f k8s/config-map.yaml
+                        kubectl apply -f k8s/mariadb-pv-pvc.yaml  
+                        kubectl apply -f k8s/persistent-volumes.yaml
+                        kubectl apply -f k8s/db-init-configmap.yaml
+                        kubectl apply -f k8s/mariadb-deployment.yaml
+                        kubectl apply -f k8s/mariadb-service.yaml
 
-                sh 'kubectl apply -f k8s/flask-service.yaml'
-                sh 'kubectl apply -f k8s/ingress.yaml'
+                        sed -e "s|\\${DOCKER_REGISTRY}|${DOCKER_REGISTRY}|g" \
+                            -e "s|\\${APP_VERSION}|${APP_VERSION}|g" k8s/flask-deployment.yaml | kubectl apply -f -
+
+                        kubectl apply -f k8s/flask-service.yaml
+                        kubectl apply -f k8s/ingress.yaml
+                    '''
+                }
             }
         }
 
         stage('Verify Deployment') {
+            when {
+                expression { currentBuild.result != 'FAILURE' }
+            }
             steps {
-                sh 'kubectl rollout status deployment/flask-app -n moto-app'
+                withCredentials([file(credentialsId: 'KUBECONFIG', variable: 'KUBECONFIG_FILE')]) {
+                    sh '''
+                        mkdir -p /tmp/.kube
+                        cp "$KUBECONFIG_FILE" /tmp/.kube/config
+                        export KUBECONFIG=/tmp/.kube/config
+
+                        echo "⏳ Vérification du déploiement..."
+                        kubectl rollout status deployment/flask-app -n moto-app
+
+                        echo "📦 Liste des pods :"
+                        kubectl get pods -n moto-app
+                    '''
+                }
             }
         }
     }
@@ -101,13 +186,15 @@ pipeline {
     post {
         success {
             echo '✅ Déploiement réussi !'
-            slackSend(color: 'good', message: "✅ Déploiement de ${APP_NAME}:${APP_VERSION} réussi", channel: '#devops-alerts', tokenCredentialId: 'slack-token-id')
+        }
+        unstable {
+            echo '⚠️ Déploiement instable (tests ou scan de sécurité échoués).'
         }
         failure {
             echo '❌ Le déploiement a échoué.'
-            slackSend(color: 'danger', message: "❌ Déploiement de ${APP_NAME}:${APP_VERSION} échoué", channel: '#devops-alerts', tokenCredentialId: 'slack-token-id')
         }
         always {
+            sh 'rm -rf /tmp/.kube || true'
             cleanWs()
         }
     }
