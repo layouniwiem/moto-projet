@@ -63,65 +63,69 @@ pipeline {
                 }
             }
         }
+    
+   stage('Security Scan') {
+    when {
+        expression { currentBuild.result != 'FAILURE' }
+    }
+    steps {
+        script {
+            try {
+                sh '''
+                    # Répertoire local pour Trivy
+                    mkdir -p "$HOME/.local/bin"
+                    export PATH="$HOME/.local/bin:$PATH"
 
-        stage('Security Scan') {
-            when {
-                expression { currentBuild.result != 'FAILURE' }
-            }
-            steps {
-                script {
-                    try {
-                        sh """
-                            trivy image --timeout 10m --scanners vuln ${DOCKER_REGISTRY}/${APP_NAME}:${APP_VERSION}
-                        """
-                    } catch (err) {
-                        echo "⚠️ Analyse Trivy échouée : ${err.getMessage()}"
-                        currentBuild.result = 'UNSTABLE'
-                    }
-                }
+                    # Installer Trivy localement s'il n'existe pas
+                    if ! command -v trivy > /dev/null; then
+                        echo "Installation de Trivy..."
+                        curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b "$HOME/.local/bin"
+                    fi
+
+                    # Vérifier que Trivy fonctionne
+                    trivy --version
+
+                    # Lancer le scan
+                    trivy image --timeout 10m --scanners vuln ${DOCKER_REGISTRY}/${APP_NAME}:${APP_VERSION}
+                '''
+            } catch (err) {
+                echo "⚠️ Analyse Trivy échouée : ${err.getMessage()}"
+                currentBuild.result = 'UNSTABLE'
             }
         }
+    }
+}
+
+
  stage('Test') {
-            steps {
-                dir('app') {
-                    script {
-                        try {
-                            sh '''
-                                . venv/bin/activate
-                                export PYTHONPATH=$PYTHONPATH:$(pwd)
-                                pytest ../test --cov=app --cov-report=html --junitxml=test-reports/results.xml
-                            '''
-                        } catch (err) {
-                            echo "⚠️ Tests échoués : ${err.getMessage()}"
-                            currentBuild.result = 'UNSTABLE'
-                        }
-                    }
-                }
-            }
-            post {
-                always {
-                    junit 'app/test-reports/*.xml'
-                    publishHTML target: [
-                        allowMissing: true,
-                        alwaysLinkToLastBuild: true,
-                        keepAll: true,
-                        reportDir: 'app/htmlcov',
-                        reportFiles: 'index.html',
-                        reportName: 'Coverage Report'
-                    ]
+    steps {
+        dir('app') {
+            script {
+                try {
+                    sh '''
+                        ./venv/bin/python -m pytest ../test --cov=app --cov-report=html --junitxml=test-reports/results.xml
+                    '''
+                } catch (err) {
+                    echo "⚠️ Tests échoués : ${err.getMessage()}"
+                    currentBuild.result = 'UNSTABLE'
                 }
             }
         }
-
-        stage('Push Image') {
-            when {
-                expression { currentBuild.result != 'FAILURE' }
-            }
-            steps {
-                sh "docker push ${DOCKER_REGISTRY}/${APP_NAME}:${APP_VERSION}"
-                sh "docker push ${DOCKER_REGISTRY}/${APP_NAME}:latest"
-            }
+    }
+    post {
+        always {
+            junit 'app/test-reports/*.xml'
+            publishHTML target: [
+                allowMissing: true,
+                alwaysLinkToLastBuild: true,
+                keepAll: true,
+                reportDir: 'app/htmlcov',
+                reportFiles: 'index.html',
+                reportName: 'Coverage Report'
+            ]
         }
+    }
+}
 
         stage('Deploy to Kubernetes') {
             when {

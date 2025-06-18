@@ -1,4 +1,4 @@
-from app import create_app
+from app import create_app,db
 
 #def test_homepage():
  #   app = create_app()
@@ -7,7 +7,6 @@ from app import create_app
     #assert response.status_code == 200
     #assert b"Motos" in response.data  # Ajuste selon le contenu attendu
 def test_homepage():
-    from app import create_app, db
     app = create_app({
         'TESTING': True,
         'SQLALCHEMY_DATABASE_URI': 'sqlite:///:memory:',
