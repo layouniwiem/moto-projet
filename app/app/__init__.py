@@ -27,7 +27,7 @@ login_manager.login_view = 'auth.login'
 
    # return app
 
-#from .models import User
+from .models import User
 def create_app(test_config=None):
     app = Flask(__name__, template_folder='../templates', static_folder='../static')
     

@@ -1,15 +1,14 @@
-# init_servers.yml
 ---
 - name: Configuration de base des serveurs
   hosts: all
   become: yes
   tasks:
-  
+
     - name: Mise à jour des packages
       apt:
         update_cache: yes
         upgrade: yes
-        
+
     - name: Installation des packages essentiels
       apt:
         name:
@@ -27,43 +26,43 @@
           - ufw
           - fail2ban
         state: present
-    - name: Installation des packages avec option --fix-missing
+
+    - name: Installation des packages avec option --fix-missing (exemple si besoin)
       apt:
         name:
           - vim
           - curl
-         
         force: yes
       environment:
-        APT_ARGS: "-o Dpkg::Options::='--force-confdef' -o Dpkg::Options::='--force-confold'"    
-            
+        APT_ARGS: "-o Dpkg::Options::='--force-confdef' -o Dpkg::Options::='--force-confold'"
+
     - name: Configuration du fuseau horaire
       timezone:
         name: Europe/Paris
-        
+
     - name: Configuration de l'UFW (pare-feu)
       ufw:
         state: enabled
         policy: deny
-        
+
     - name: Autorisation SSH
       ufw:
         rule: allow
         port: "22"
         proto: tcp
-        
+
     - name: Installation de Docker
       block:
         - name: Ajout de la clé GPG Docker
           apt_key:
             url: https://download.docker.com/linux/debian/gpg
             state: present
-            
+
         - name: Ajout du dépôt Docker
           apt_repository:
             repo: "deb [arch=amd64] https://download.docker.com/linux/debian {{ ansible_distribution_release }} stable"
             state: present
-            
+
         - name: Installation de Docker
           apt:
             name:
@@ -73,19 +72,19 @@
               - docker-compose-plugin
             state: present
             update_cache: yes
-            
+
         - name: Ajout de l'utilisateur au groupe Docker
           user:
             name: "{{ ansible_user }}"
             groups: docker
             append: yes
-            
+
         - name: Activation du service Docker
           service:
             name: docker
             state: started
             enabled: yes
-            
+
     - name: Configuration de fail2ban
       copy:
         dest: /etc/fail2ban/jail.local
@@ -94,12 +93,66 @@
           bantime = 3600
           findtime = 600
           maxretry = 5
-          
+
           [sshd]
           enabled = true
-          
+
     - name: Redémarrage de fail2ban
       service:
         name: fail2ban
         state: restarted
         enabled: yes
+
+    ###########################################
+    # Installation et configuration node_exporter
+    ###########################################
+
+    - name: Télécharger node_exporter
+      get_url:
+        url: https://github.com/prometheus/node_exporter/releases/download/v1.3.1/node_exporter-1.3.1.linux-amd64.tar.gz
+        dest: /tmp/node_exporter.tar.gz
+        mode: '0644'
+
+    - name: Extraire node_exporter
+      unarchive:
+        src: /tmp/node_exporter.tar.gz
+        dest: /usr/local/bin/
+        remote_src: yes
+        extra_opts: [--strip-components=1]
+
+    - name: Créer un utilisateur système node_exporter
+      user:
+        name: node_exporter
+        system: yes
+        shell: /usr/sbin/nologin
+        create_home: no
+
+    - name: Changer propriétaire du binaire node_exporter
+      file:
+        path: /usr/local/bin/node_exporter
+        owner: node_exporter
+        group: node_exporter
+        mode: '0755'
+
+    - name: Créer fichier service systemd node_exporter
+      copy:
+        dest: /etc/systemd/system/node_exporter.service
+        content: |
+          [Unit]
+          Description=Node Exporter
+          After=network.target
+
+          [Service]
+          User=node_exporter
+          ExecStart=/usr/local/bin/node_exporter
+          Restart=always
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Activer et démarrer node_exporter
+      systemd:
+        name: node_exporter
+        enabled: yes
+        state: started
+        daemon_reload: yes
