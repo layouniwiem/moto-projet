@@ -43,7 +43,7 @@ def create_app(test_config=None):
     app.register_blueprint(main)
     app.register_blueprint(auth)
 
-    from ..app import monitoring
+    from app import monitoring
     monitoring.register_metrics(app)
 
     os.makedirs(os.path.join(app.static_folder, 'img'), exist_ok=True)
