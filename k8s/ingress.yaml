@@ -8,12 +8,7 @@ metadata:
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
     nginx.ingress.kubernetes.io/use-regex: "true"
     # Configuration spécifique pour /metrics
-    nginx.ingress.kubernetes.io/configuration-snippet: |
-      location = /metrics {
-        proxy_pass http://flask-app.moto-app.svc.cluster.local:5000;
-        auth_basic off;
-        proxy_ssl_verify off;
-      }
+
 spec:
   ingressClassName: nginx
   tls:
