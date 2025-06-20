@@ -30,7 +30,8 @@ spec:
         fsGroup: 2000
       containers:
       - name: flask-app
-        image: docker.io/layouniwiem/moto-app:latest
+        # Laisser un placeholder ${DOCKER_REGISTRY}/${APP_NAME}:${APP_VERSION} à remplacer dans Jenkinsfile
+        image: "${DOCKER_REGISTRY}/${APP_NAME}:${APP_VERSION}"
         imagePullPolicy: IfNotPresent
         ports:
         - name: http
