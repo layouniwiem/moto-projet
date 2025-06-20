@@ -4,18 +4,19 @@ metadata:
   name: moto-app-ingress
   namespace: moto-app
   annotations:
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"  # Force HTTPS
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
     nginx.ingress.kubernetes.io/use-regex: "true"
-    nginx.ingress.kubernetes.io/rewrite-target: /
-    # Configuration spécifique pour certificats auto-signés
     nginx.ingress.kubernetes.io/configuration-snippet: |
-      proxy_ssl_verify off;  # Désactive la vérification côté Nginx (pour lab interne)
+      location /metrics {
+        proxy_pass http://flask-app.moto-app.svc.cluster.local:5000;
+        auth_basic off;
+      }
 spec:
   ingressClassName: nginx
   tls:
   - hosts:
-    - moto-app.internal  # Utilisez un domaine interne
-    secretName: moto-app-tls  # Secret contenant le certificat auto-signé
+    - moto-app.internal
+    secretName: moto-app-tls
   rules:
   - host: moto-app.internal
     http:
@@ -27,3 +28,10 @@ spec:
             name: flask-app
             port:
               number: 80
+      - path: /metrics
+        pathType: Prefix
+        backend:
+          service:
+            name: flask-app
+            port:
+              number: 5000

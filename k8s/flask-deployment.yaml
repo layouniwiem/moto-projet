@@ -5,8 +5,14 @@ metadata:
   namespace: moto-app
   labels:
     app: flask-app
+    tier: backend
 spec:
   replicas: 2
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+    type: RollingUpdate
   selector:
     matchLabels:
       app: flask-app
@@ -14,32 +20,44 @@ spec:
     metadata:
       labels:
         app: flask-app
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "5000"
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 2000
       containers:
       - name: flask-app
-        image: docker.io/layouniwiem/moto-app:latest  # Remplace par la bonne image/tag
+        image: docker.io/layouniwiem/moto-app:latest
+        imagePullPolicy: IfNotPresent
         ports:
-        - containerPort: 5000
+        - name: http
+          containerPort: 5000
+          protocol: TCP
         env:
-          - name: MYSQL_USER
-            valueFrom:
-              secretKeyRef:
-                name: db-credentials
-                key: MYSQL_USER
-          - name: MYSQL_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: db-credentials
-                key: MYSQL_PASSWORD
-          - name: MYSQL_DATABASE
-            valueFrom:
-              secretKeyRef:
-                name: db-credentials
-                key: MYSQL_DATABASE
-          - name: MYSQL_HOST
-            value: mariadb  # Nom du service MariaDB dans Kubernetes
-          - name: FLASK_ENV
-            value: production
+        - name: MYSQL_USER
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: MYSQL_USER
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: MYSQL_PASSWORD
+        - name: MYSQL_DATABASE
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: MYSQL_DATABASE
+        - name: MYSQL_HOST
+          value: "mariadb"
+        - name: FLASK_ENV
+          value: "production"
+        - name: GUNICORN_WORKERS
+          value: "2"
         resources:
           requests:
             memory: "128Mi"
@@ -49,13 +67,30 @@ spec:
             cpu: "500m"
         readinessProbe:
           httpGet:
-            path: /
+            path: /health
             port: 5000
-          initialDelaySeconds: 10
-          periodSeconds: 5
+            scheme: HTTP
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
         livenessProbe:
           httpGet:
-            path: /
+            path: /health
             port: 5000
           initialDelaySeconds: 30
-          periodSeconds: 10
+          periodSeconds: 15
+          timeoutSeconds: 5
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          failureThreshold: 10
+          periodSeconds: 5
+        volumeMounts:
+        - name: tmp-volume
+          mountPath: /tmp
+      volumes:
+      - name: tmp-volume
+        emptyDir: {}

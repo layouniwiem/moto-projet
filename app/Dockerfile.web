@@ -14,7 +14,7 @@
 #COPY requirements.txt .
 #RUN pip install --no-cache-dir -r requirements.txt
 
-# Copie du reste de l'application
+ #Copie du reste de l'application
 #COPY . .
 
 #ENV FLASK_APP=app
@@ -55,9 +55,17 @@ COPY monitoring.py /app/
 EXPOSE 5000
 
 # Définir les variables d'environnement
+
 ENV FLASK_APP=app
 ENV PYTHONUNBUFFERED=1
 ENV FLASK_ENV=production
+
+
+# Configuration de la base de données
+ENV MYSQL_USER=moto_user
+ENV MYSQL_PASSWORD=moto_password
+ENV MYSQL_DATABASE=moto_db
+ENV MYSQL_HOST=mariadb
 ENV DATABASE_URL=mysql+pymysql://moto_user:moto_password@mariadb:3306/moto_db
 
 # Script d'entrée
