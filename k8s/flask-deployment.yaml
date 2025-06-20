@@ -60,12 +60,14 @@ spec:
         - name: GUNICORN_WORKERS
           value: "2"
         resources:
-          requests:
-            memory: "128Mi"
-            cpu: "250m"
           limits:
-            memory: "256Mi"
-            cpu: "500m"
+            cpu: 500m
+            memory: 256Mi
+          requests:
+            cpu: 250m
+            memory: 128Mi
+
+
         readinessProbe:
           httpGet:
             path: /health
