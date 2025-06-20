@@ -5,17 +5,19 @@ metadata:
   namespace: moto-app
   annotations:
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
     nginx.ingress.kubernetes.io/use-regex: "true"
+    # Headers de sécurité recommandés
     nginx.ingress.kubernetes.io/configuration-snippet: |
-      location /metrics {
-        proxy_pass http://flask-app.moto-app.svc.cluster.local:5000;
-        auth_basic off;
-      }
+      more_set_headers "Strict-Transport-Security: max-age=31536000; includeSubDomains";
+      more_set_headers "X-Content-Type-Options: nosniff";
+      more_set_headers "X-Frame-Options: DENY";
 spec:
   ingressClassName: nginx
   tls:
   - hosts:
     - moto-app.internal
+    - moto-app.example.com
     secretName: moto-app-tls
   rules:
   - host: moto-app.internal
@@ -29,9 +31,19 @@ spec:
             port:
               number: 80
       - path: /metrics
-        pathType: Prefix
+        pathType: Exact  # Changé en Exact pour plus de précision
         backend:
           service:
             name: flask-app
             port:
               number: 5000
+  - host: moto-app.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: flask-app
+            port:
+              number: 80
