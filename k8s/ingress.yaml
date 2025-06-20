@@ -7,29 +7,20 @@ metadata:
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
     nginx.ingress.kubernetes.io/use-regex: "true"
-    # Configuration spécifique pour /metrics
-
 spec:
   ingressClassName: nginx
   tls:
   - hosts:
-    - moto-app.example.com  # Uniquement le domaine principal
+    - moto-app.example.com
     secretName: moto-app-tls
   rules:
   - host: moto-app.example.com
     http:
       paths:
-      - path: /
+      - path: /(.*)
         pathType: Prefix
         backend:
           service:
             name: flask-app
             port:
               number: 80
-      - path: /metrics
-        pathType: Exact  # Correspondance exacte
-        backend:
-          service:
-            name: flask-app
-            port:
-              number: 5000

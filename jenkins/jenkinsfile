@@ -95,37 +95,37 @@ pipeline {
         }
     }
 }
-
-
- stage('Test') {
-    steps {
-        dir('app') {
-            script {
-                try {
-                    sh '''
-                        ./venv/bin/python -m pytest ../test --cov=app --cov-report=html --junitxml=test-reports/results.xml
-                    '''
-                } catch (err) {
-                    echo "⚠️ Tests échoués : ${err.getMessage()}"
-                    currentBuild.result = 'UNSTABLE'
+    
+    stage('Test') {
+        steps {
+            dir('app') {
+                script {
+                    try {
+                        sh '''
+                            mkdir -p test-reports
+                            ./venv/bin/python -m pytest ../test --cov=app --cov-report=html --junitxml=test-reports/results.xml
+                        '''
+                    } catch (err) {
+                        echo "⚠️ Tests échoués : ${err.getMessage()}"
+                        currentBuild.result = 'UNSTABLE'
+                    }
                 }
             }
         }
-    }
-    post {
-        always {
-            junit 'app/test-reports/*.xml'
-            publishHTML target: [
-                allowMissing: true,
-                alwaysLinkToLastBuild: true,
-                keepAll: true,
-                reportDir: 'app/htmlcov',
-                reportFiles: 'index.html',
-                reportName: 'Coverage Report'
-            ]
+        post {
+            always {
+                junit 'app/test-reports/*.xml'
+                publishHTML target: [
+                    allowMissing: true,
+                    alwaysLinkToLastBuild: true,
+                    keepAll: true,
+                    reportDir: 'app/htmlcov',
+                    reportFiles: 'index.html',
+                    reportName: 'Coverage Report'
+                ]
+            }
         }
     }
-}
 
         stage('Deploy to Kubernetes') {
             when {
@@ -149,6 +149,7 @@ pipeline {
                         kubectl apply -f k8s/namespace.yml
                         kubectl apply -f k8s/secrets.yaml
                         kubectl apply -f k8s/config-map.yaml
+                        kubectl apply -f k8s/init-sql-configmap.yaml
                         kubectl apply -f k8s/mariadb-pv-pvc.yaml  
                         kubectl apply -f k8s/persistent-volumes.yaml
                         kubectl apply -f k8s/db-init-configmap.yaml
