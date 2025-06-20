@@ -1,0 +1,123 @@
+Vous avez raison : avec votre architecture actuelle (3 VMs distinctes, sans accès public ni DNS), l'automatisation complète de **Let's Encrypt** est difficile. Voici une solution **100% interne et automatisable** adaptée à votre contexte :
+
+---
+
+### **Alternative avec PKI Interne (Auto-signé Automatisé)**
+#### **1. Créer une Autorité Certificatrice (CA) Racine**  
+*(Sur VM1/Jenkins pour centraliser)*  
+```bash
+# Générer la CA
+openssl genrsa -out ca.key 2048
+openssl req -new -x509 -days 365 -key ca.key -out ca.crt -subj "/CN=DevOps Riders Internal CA"
+
+# Distribuer la CA sur toutes les VMs
+scp ca.crt root@vm2:/usr/local/share/ca-certificates/
+scp ca.crt root@vm3:/usr/local/share/ca-certificates/
+ssh root@vm2 "update-ca-certificates"
+ssh root@vm3 "update-ca-certificates"
+```
+
+#### **2. Générer des Certificats Automatisés**  
+**Script `/usr/local/bin/generate-cert.sh`** (à exécuter sur VM1) :  
+```bash
+#!/bin/bash
+DOMAIN=$1
+
+# Générer certificat
+openssl req -newkey rsa:2048 -nodes -keyout ${DOMAIN}.key -out ${DOMAIN}.csr -subj "/CN=${DOMAIN}"
+openssl x509 -req -days 90 -in ${DOMAIN}.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out ${DOMAIN}.crt
+
+# Pour Kubernetes
+kubectl create secret tls ${DOMAIN}-tls --cert=${DOMAIN}.crt --key=${DOMAIN}.key -n moto-app
+```
+
+**Exemple d'utilisation** :  
+```bash
+generate-cert.sh moto-app.internal
+generate-cert.sh grafana.internal
+```
+
+---
+
+### **3. Adapter les Configurations**  
+#### **A. Ingress Nginx (VM2)**  
+```yaml
+# ingress-internal.yaml
+spec:
+  tls:
+  - hosts:
+    - moto-app.internal
+    secretName: moto-app.internal-tls  # Créé par le script
+```
+
+#### **B. Jenkins (VM1)**  
+```bash
+# Configurer Jenkins avec le certificat auto-généré
+sudo cp jenkins.internal.crt /var/lib/jenkins/
+sudo cp jenkins.internal.key /var/lib/jenkins/
+# Puis configurer via l'UI (HTTPS Port + chemins)
+```
+
+#### **C. Grafana (VM3) - Via Nginx**  
+```nginx
+server {
+    listen 443 ssl;
+    server_name grafana.internal;
+    ssl_certificate /etc/ssl/grafana.internal.crt;
+    ssl_certificate_key /etc/ssl/grafana.internal.key;
+    # ... proxy_pass vers Grafana
+}
+```
+
+---
+
+### **4. Automatisation Complète avec Ansible**  
+**Playbook `tls-setup.yml`** :  
+```yaml
+- hosts: all
+  tasks:
+    - name: Install CA
+      copy:
+        src: ca.crt
+        dest: /usr/local/share/ca-certificates/
+      notify: Update CA
+
+    - name: Generate certs for Jenkins
+      command: /usr/local/bin/generate-cert.sh jenkins.internal
+      delegate_to: vm1
+
+    - name: Deploy cert to Nginx (VM3)
+      copy:
+        src: "{{ item }}.crt"
+        dest: "/etc/ssl/{{ item }}.crt"
+      with_items:
+        - grafana.internal
+        - prometheus.internal
+```
+
+---
+
+### **5. Vérification**  
+```bash
+# Tester depuis VM1
+curl --cacert /usr/local/share/ca-certificates/ca.crt https://moto-app.internal
+
+# Voir les certificats dans K3s
+kubectl get secrets -n moto-app | grep tls
+```
+
+---
+
+### **Pourquoi ça Résout Votre Problème ?**  
+- **100% interne** : Pas besoin de DNS public ou de connexion Internet.  
+- **Automatisable** : Scripts + Ansible.  
+- **Renouvellement facile** : Relancez le script tous les 90 jours (à planifier dans cron).  
+
+> **Bonus** : Pour simuler des noms de domaine, ajoutez dans `/etc/hosts` de chaque VM :  
+> ```
+> 192.168.1.77 jenkins.internal  
+> 192.168.1.78 moto-app.internal  
+> 192.168.1.44 grafana.internal  
+> ```
+
+Je peux vous envoyer les fichiers complets (scripts + playbooks) si besoin ! Cette méthode est **sécurisée et adaptée à votre lab**. 🔐

@@ -1,19 +1,23 @@
-
----
-# ingress.yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: moto-app-ingress
   namespace: moto-app
   annotations:
-    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"  # Force HTTPS
     nginx.ingress.kubernetes.io/use-regex: "true"
     nginx.ingress.kubernetes.io/rewrite-target: /
+    # Configuration spécifique pour certificats auto-signés
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      proxy_ssl_verify off;  # Désactive la vérification côté Nginx (pour lab interne)
 spec:
   ingressClassName: nginx
+  tls:
+  - hosts:
+    - moto-app.internal  # Utilisez un domaine interne
+    secretName: moto-app-tls  # Secret contenant le certificat auto-signé
   rules:
-  - host: moto-app.example.com
+  - host: moto-app.internal
     http:
       paths:
       - path: /

@@ -15,7 +15,10 @@ def test_homepage():
 
     with app.app_context():
         db.create_all()
+   
 
     client = app.test_client()
     response = client.get('/')
     assert response.status_code == 200
+    assert b"Moto" in response.data 
+
