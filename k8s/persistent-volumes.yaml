@@ -20,7 +20,7 @@ metadata:
   namespace: moto-app
 spec:
   accessModes:
-    - ReadWriteMany
+    - ReadWriteOnce  # Changé de ReadWriteMany à ReadWriteOnce
   resources:
     requests:
       storage: 2Gi
