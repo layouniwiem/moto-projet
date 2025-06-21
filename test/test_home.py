@@ -1,4 +1,4 @@
-from app.app import create_app, db  # Corrigé ici
+from app import create_app, db  # Corrigé ici
 
 def test_homepage():
     app = create_app({
