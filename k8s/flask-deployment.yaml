@@ -32,14 +32,26 @@ spec:
               cpu: "500m"
           startupProbe:
             httpGet:
-              path: /health  # Chemin corrigé
+              path: /health
               port: 5000
-            initialDelaySeconds: 40
+            initialDelaySeconds: 60  # Délai plus long
             periodSeconds: 10
-            failureThreshold: 12
+            failureThreshold: 12     # 120s max
+
           livenessProbe:
             httpGet:
               path: /health
               port: 5000
-            initialDelaySeconds: 120
-            periodSeconds: 20
+            initialDelaySeconds: 90  # Délai très long
+            periodSeconds: 15
+
+          readinessProbe:
+            httpGet:
+              path: /health 
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+
+          env:
+          - name: GUNICORN_CMD_ARGS
+            value: "--workers=2 --timeout=120 --keep-alive=2 --bind=0.0.0.0:5000 --preload"
