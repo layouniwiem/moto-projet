@@ -5,14 +5,8 @@ metadata:
   namespace: moto-app
   labels:
     app: flask-app
-    tier: backend
 spec:
   replicas: 2
-  strategy:
-    rollingUpdate:
-      maxSurge: 1
-      maxUnavailable: 0
-    type: RollingUpdate
   selector:
     matchLabels:
       app: flask-app
@@ -20,75 +14,48 @@ spec:
     metadata:
       labels:
         app: flask-app
-      annotations:
-        prometheus.io/scrape: "true"
-        prometheus.io/port: "5000"
     spec:
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 1000
-        fsGroup: 2000
       containers:
       - name: flask-app
-        image: "${DOCKER_REGISTRY}/${APP_NAME}:${APP_VERSION}"  # Remplacé par Jenkins
-        imagePullPolicy: IfNotPresent
+        image: docker.io/layouniwiem/moto-app:latest  # Remplace par la bonne image/tag
         ports:
-        - name: http
-          containerPort: 5000
-          protocol: TCP
+        - containerPort: 5000
         env:
-        - name: MYSQL_USER
-          valueFrom:
-            secretKeyRef:
-              name: db-credentials
-              key: MYSQL_USER
-        - name: MYSQL_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: db-credentials
-              key: MYSQL_PASSWORD
-        - name: MYSQL_DATABASE
-          valueFrom:
-            secretKeyRef:
-              name: db-credentials
-              key: MYSQL_DATABASE
-        - name: MYSQL_HOST
-          value: "mariadb.moto-app.svc.cluster.local"  # Correction DNS confirmée
-        - name: FLASK_ENV
-          value: "production"
-        - name: GUNICORN_WORKERS
-          value: "2"
-        - name: PYTHONUNBUFFERED  # Pour les logs en temps réel
-          value: "1"
+          - name: MYSQL_USER
+            valueFrom:
+              secretKeyRef:
+                name: db-credentials
+                key: MYSQL_USER
+          - name: MYSQL_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: db-credentials
+                key: MYSQL_PASSWORD
+          - name: MYSQL_DATABASE
+            valueFrom:
+              secretKeyRef:
+                name: db-credentials
+                key: MYSQL_DATABASE
+          - name: MYSQL_HOST
+            value: mariadb  # Nom du service MariaDB
+          - name: FLASK_ENV
+            value: production
         resources:
-          limits:
-            cpu: 500m
-            memory: 512Mi
           requests:
-            cpu: 250m
-            memory: 256Mi
-        startupProbe:
-          httpGet:
-            path: /healthz
-            port: 5000
-          failureThreshold: 30  # Temps max: 30*5s = 150s (2.5min)
-          periodSeconds: 5
+            memory: "128Mi"
+            cpu: "250m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
         readinessProbe:
           httpGet:
-            path: /health
+            path: /
             port: 5000
-          initialDelaySeconds: 15
-          periodSeconds: 10
-          failureThreshold: 3
+          initialDelaySeconds: 10
+          periodSeconds: 5
         livenessProbe:
           httpGet:
-            path: /health
+            path: /
             port: 5000
-          initialDelaySeconds: 45  # Délai important pour les apps lentes
-          periodSeconds: 15
-        volumeMounts:
-        - name: tmp-volume
-          mountPath: /tmp
-      volumes:
-      - name: tmp-volume
-        emptyDir: {}
+          initialDelaySeconds: 30
+          periodSeconds: 10
