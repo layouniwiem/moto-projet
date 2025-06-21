@@ -10,14 +10,13 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background-color: #333;
+    background-color: #353434;
     padding: 10px 20px;
     position: fixed;   /* fixe la navbar */
     top: 0;            /* en haut */
     left: 0;           /* tout à gauche */
     width: 100%;       /* largeur complète */
     z-index: 1000;     /* au-dessus des autres éléments */
-    background-color: #fff;  /* background pour qu'elle soit visible */
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);  /* optionnel : petite ombre */
 }
 
