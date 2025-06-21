@@ -12,6 +12,13 @@ body {
     align-items: center;
     background-color: #333;
     padding: 10px 20px;
+    position: fixed;   /* fixe la navbar */
+    top: 0;            /* en haut */
+    left: 0;           /* tout à gauche */
+    width: 100%;       /* largeur complète */
+    z-index: 1000;     /* au-dessus des autres éléments */
+    background-color: #fff;  /* background pour qu'elle soit visible */
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);  /* optionnel : petite ombre */
 }
 
 .navbar-left img.nav-logo {
@@ -174,4 +181,19 @@ form input[type="submit"]:hover {
     align-items: center;
     height: 100vh;
     margin: 0;
+}
+.login-page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;  /* plein écran vertical */
+  background-color: #f0f2f5;  /* ou autre couleur, si tu veux */
+}
+
+.login-container {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  width: 300px;
 }
