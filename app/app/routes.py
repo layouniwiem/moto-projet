@@ -8,7 +8,7 @@ from werkzeug.utils import secure_filename
 from PIL import Image
 
 from .models import User, Moto
-from .forms import LoginForm
+from .forms import AddMotoForm, LoginForm
 from . import db
 
 # Configuration upload
