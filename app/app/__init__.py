@@ -1,22 +1,44 @@
+from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager
 import os
 
-class Config:
-    # Clé secrète pour Flask
-    SECRET_KEY = os.environ.get('SECRET_KEY', 'default-secret-key')
+db = SQLAlchemy()
+login_manager = LoginManager()
+login_manager.login_view = 'auth.login'
 
-    # Infos base de données MySQL / MariaDB
-    MYSQL_USER = os.environ.get('MYSQL_USER', 'default_user')
-    MYSQL_PASSWORD = os.environ.get('MYSQL_PASSWORD', 'default_password')
-    MYSQL_DATABASE = os.environ.get('MYSQL_DATABASE', 'default_db')
-    MYSQL_HOST = os.environ.get('MYSQL_HOST', 'mariadb')  # service Kubernetes
+def create_app(test_config=None):
+    app = Flask(__name__, template_folder='../templates', static_folder='../static')
 
-    # Construction dynamique de l'URI SQLAlchemy
-    SQLALCHEMY_DATABASE_URI = (
-        f"mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}:3306/{MYSQL_DATABASE}"
-    )
-    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    if test_config:
+        app.config.from_object(test_config)
+    else:
+        env = os.getenv('FLASK_ENV', 'development').lower()
+        if env == 'production':
+            from .config import ProductionConfig
+            app.config.from_object(ProductionConfig)
+        elif env == 'testing':
+            from .config import TestingConfig
+            app.config.from_object(TestingConfig)
+        else:
+            from .config import DevelopmentConfig
+            app.config.from_object(DevelopmentConfig)
 
-    # Environnement Flask (optionnel)
-    FLASK_ENV = os.environ.get('FLASK_ENV', 'production')
+    db.init_app(app)
+    login_manager.init_app(app)
 
-    # Autres configs spécifiques si besoin
+    from .routes import main, auth
+    app.register_blueprint(main)
+    app.register_blueprint(auth)
+
+    # Création dossier static/img s'il n'existe pas
+    import os
+    os.makedirs(os.path.join(app.static_folder, 'img'), exist_ok=True)
+
+    return app
+
+from .models import User
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
