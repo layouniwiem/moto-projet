@@ -1,7 +1,7 @@
 
 {% extends "base.html" %}
 
-{% block content %}
+<!--{% block content %}
 <div class="login-form">
     <h1>Connexion</h1>
     <form method="POST" action="">
@@ -16,5 +16,100 @@
         </div>
         {{ form.submit() }}
     </form>
+</div>
+{% endblock %} -->
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    .login-form {
+        max-width: 400px;
+        margin: 60px auto;
+        padding: 30px;
+        background: #ffffff;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        border-radius: 12px;
+        font-family: 'Segoe UI', sans-serif;
+    }
+
+    .login-form h1 {
+        text-align: center;
+        margin-bottom: 25px;
+        font-size: 28px;
+        color: #333;
+    }
+
+    .login-form div {
+        margin-bottom: 18px;
+    }
+
+    .login-form label {
+        display: block;
+        margin-bottom: 6px;
+        color: #555;
+    }
+
+    .login-form input {
+        width: 100%;
+        padding: 10px;
+        border-radius: 6px;
+        border: 1px solid #ccc;
+        font-size: 14px;
+    }
+
+    .login-form input:focus {
+        border-color: #007bff;
+        outline: none;
+    }
+
+    .login-form button, .login-form input[type="submit"] {
+        width: 100%;
+        padding: 10px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+    }
+
+    .login-form button:hover, .login-form input[type="submit"]:hover {
+        background-color: #0056b3;
+    }
+
+    .register-link {
+        margin-top: 15px;
+        text-align: center;
+    }
+
+    .register-link a {
+        color: #007bff;
+        text-decoration: none;
+    }
+
+    .register-link a:hover {
+        text-decoration: underline;
+    }
+</style>
+
+<div class="login-form">
+    <h1>Connexion</h1>
+    <form method="POST" action="">
+        {{ form.hidden_tag() }}
+        <div>
+            {{ form.username.label }}
+            {{ form.username(class="form-control") }}
+        </div>
+        <div>
+            {{ form.password.label }}
+            {{ form.password(class="form-control") }}
+        </div>
+        {{ form.submit(class="btn btn-primary") }}
+    </form>
+
+    <div class="register-link">
+        <p>Pas encore inscrit ? <a href="{{ url_for('register') }}">Inscrivez-vous ici</a></p>
+    </div>
 </div>
 {% endblock %}
