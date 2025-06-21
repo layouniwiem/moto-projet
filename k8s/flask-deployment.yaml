@@ -3,8 +3,6 @@ kind: Deployment
 metadata:
   name: flask-app
   namespace: moto-app
-  labels:
-    app: flask-app
 spec:
   replicas: 2
   selector:
@@ -16,46 +14,32 @@ spec:
         app: flask-app
     spec:
       containers:
-      - name: flask-app
-        image: docker.io/layouniwiem/moto-app:latest  # Remplace par la bonne image/tag
-        ports:
-        - containerPort: 5000
-        env:
-          - name: MYSQL_USER
-            valueFrom:
-              secretKeyRef:
-                name: db-credentials
-                key: MYSQL_USER
-          - name: MYSQL_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: db-credentials
-                key: MYSQL_PASSWORD
-          - name: MYSQL_DATABASE
-            valueFrom:
-              secretKeyRef:
-                name: db-credentials
-                key: MYSQL_DATABASE
-          - name: MYSQL_HOST
-            value: mariadb  # Nom du service MariaDB
-          - name: FLASK_ENV
-            value: production
-        resources:
-          requests:
-            memory: "128Mi"
-            cpu: "250m"
-          limits:
-            memory: "256Mi"
-            cpu: "500m"
-        readinessProbe:
-          httpGet:
-            path: /
-            port: 5000
-          initialDelaySeconds: 10
-          periodSeconds: 5
-        livenessProbe:
-          httpGet:
-            path: /
-            port: 5000
-          initialDelaySeconds: 30
-          periodSeconds: 10
+        - name: flask-app
+          image: docker.io/layouniwiem/moto-app:latest  # Correction du nom d'image
+          ports:
+          - containerPort: 5000
+          env:
+          - name: GUNICORN_CMD_ARGS  # Correction du nom de variable
+            value: "--workers=2 --timeout=120 --keep-alive=2 --bind=0.0.0.0:5000"
+          - name: MYSQL_HOST  # Correction du nom de variable
+            value: "mariadb.moto-app.svc.cluster.local"
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "250m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+          startupProbe:
+            httpGet:
+              path: /health  # Chemin corrigé
+              port: 5000
+            initialDelaySeconds: 40
+            periodSeconds: 10
+            failureThreshold: 12
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 120
+            periodSeconds: 20

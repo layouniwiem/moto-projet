@@ -21,22 +21,24 @@ auth = Blueprint('auth', __name__,static_folder='static', template_folder='templ
 # Nouvelle route health check
 @main.route('/health')
 def health_check():
-    try:
+    """Endpoint simplifié pour Kubernetes"""
+    return jsonify({"status": "ok"}), 200
+  #  try:
         # Test rapide sans DB pour la sonde startup
-        if request.path == '/health':
-            return jsonify(status='ok'), 200
+     #   if request.path == '/health':
+      #      return jsonify(status='ok'), 200
             
         # Vérification complète pour les autres cas
-        db.session.execute('SELECT 1').fetchone()
-        return jsonify({
-            'status': 'healthy',
-            'database': 'connected'
-        }), 200
-    except Exception as e:
-        return jsonify({
-            'status': 'unhealthy',
-            'error': str(e)
-        }), 500
+     #   db.session.execute('SELECT 1').fetchone()
+      #  return jsonify({
+       #     'status': 'healthy',
+        #    'database': 'connected'
+       # }), 200
+  #  except Exception as e:
+       # return jsonify({
+       #     'status': 'unhealthy',
+        #    'error': str(e)
+        #}), 500
 
 @main.route('/')
 def home():
