@@ -1,5 +1,11 @@
 
+# -*- coding: utf-8 -*-
+
 # run.py (mise à jour pour inclure le monitoring)
+import pymysql
+pymysql.install_as_MySQLdb()
+import datetime
+from flask import jsonify
 from app import create_app
 from monitoring import setup_metrics  # Assurez-vous du bon chemin
 
@@ -48,13 +54,15 @@ def health_check():
 def check_database_connection():
     """Check if database connection is working"""
     try:
-        connection = mysql.connector.connect(
+
+        connection = pymysql.connect(
             host=os.environ.get('MYSQL_HOST', 'mariadb.moto-app.svc.cluster.local'),
             user=os.environ.get('MYSQL_USER', 'moto_user'),
             password=os.environ.get('MYSQL_PASSWORD', 'moto_password'),
             database=os.environ.get('MYSQL_DATABASE', 'moto_db'),
-            connection_timeout=5
-        )
+            connect_timeout=5  # Timeout pour éviter de bloquer trop longtemps  
+)
+        
         
         if connection.is_connected():
             cursor = connection.cursor()
