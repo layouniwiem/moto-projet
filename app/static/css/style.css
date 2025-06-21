@@ -11,7 +11,7 @@ body {
     justify-content: space-between;
     align-items: center;
     background-color: #353434;
-    padding: 10px 20px;
+    /* padding: 10px 20px; */
     position: fixed;   /* fixe la navbar */
     top: 0;            /* en haut */
     left: 0;           /* tout à gauche */
