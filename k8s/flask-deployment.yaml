@@ -14,44 +14,42 @@ spec:
         app: flask-app
     spec:
       containers:
-        - name: flask-app
-          image: docker.io/layouniwiem/moto-app:latest  # Correction du nom d'image
-          ports:
-          - containerPort: 5000
-          env:
-          - name: GUNICORN_CMD_ARGS  # Correction du nom de variable
-            value: "--workers=2 --timeout=120 --keep-alive=2 --bind=0.0.0.0:5000"
-          - name: MYSQL_HOST  # Correction du nom de variable
-            value: "mariadb.moto-app.svc.cluster.local"
-          resources:
-            requests:
-              memory: "128Mi"
-              cpu: "250m"
-            limits:
-              memory: "256Mi"
-              cpu: "500m"
-          startupProbe:
-            httpGet:
-              path: /health
-              port: 5000
-            initialDelaySeconds: 60  # Délai plus long
-            periodSeconds: 10
-            failureThreshold: 12     # 120s max
-
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: 5000
-            initialDelaySeconds: 90  # Délai très long
-            periodSeconds: 15
-
-          readinessProbe:
-            httpGet:
-              path: /health 
-              port: 5000
-            initialDelaySeconds: 5
-            periodSeconds: 5
-
-          env:
-          - name: GUNICORN_CMD_ARGS
-            value: "--workers=2 --timeout=120 --keep-alive=2 --bind=0.0.0.0:5000 --preload"
+      - name: flask-app
+        image: docker.io/layouniwiem/moto-app:latest
+        ports:
+        - containerPort: 5000
+        env:
+        - name: GUNICORN_CMD_ARGS
+          value: "--bind=0.0.0.0:5000 --workers=2 --timeout=120 --keep-alive=2 --preload --access-logfile -"
+        - name: MYSQL_HOST
+          value: "mariadb.moto-app.svc.cluster.local"
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        - name: FLASK_DEBUG
+          value: "1"
+        resources:
+          requests:
+            memory: "256Mi"  # Augmenté
+            cpu: "500m"      # Augmenté
+          limits:
+            memory: "512Mi"  # Augmenté
+            cpu: "1000m"     # Augmenté
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          failureThreshold: 12
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 90
+          periodSeconds: 15
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 5
+          periodSeconds: 5
