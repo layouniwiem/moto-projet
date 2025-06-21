@@ -1,7 +1,8 @@
+import os
+
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
-import os
 
 db = SQLAlchemy()
 login_manager = LoginManager()
@@ -32,7 +33,7 @@ def create_app(test_config=None):
     app.register_blueprint(auth)
 
     # Création dossier static/img s'il n'existe pas
-    import os
+    
     os.makedirs(os.path.join(app.static_folder, 'img'), exist_ok=True)
 
     return app
