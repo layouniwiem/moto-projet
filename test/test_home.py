@@ -1,11 +1,5 @@
-from app import create_app,db
+from app.app import create_app, db  # Corrigé ici
 
-#def test_homepage():
- #   app = create_app()
-  #  client = app.test_client()
-   # response = client.get('/')
-    #assert response.status_code == 200
-    #assert b"Motos" in response.data  # Ajuste selon le contenu attendu
 def test_homepage():
     app = create_app({
         'TESTING': True,
@@ -15,10 +9,9 @@ def test_homepage():
 
     with app.app_context():
         db.create_all()
-   
 
     client = app.test_client()
     response = client.get('/')
     assert response.status_code == 200
-    assert b"Moto" in response.data 
-
+    print(response.data.decode())  # Pour debug si le test échoue
+    assert b"Moto" in response.data

@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # run.py (mise à jour pour inclure le monitoring)
+import os
 import pymysql
 pymysql.install_as_MySQLdb()
 import datetime
@@ -54,28 +55,24 @@ def health_check():
 def check_database_connection():
     """Check if database connection is working"""
     try:
-
         connection = pymysql.connect(
             host=os.environ.get('MYSQL_HOST', 'mariadb.moto-app.svc.cluster.local'),
             user=os.environ.get('MYSQL_USER', 'moto_user'),
             password=os.environ.get('MYSQL_PASSWORD', 'moto_password'),
             database=os.environ.get('MYSQL_DATABASE', 'moto_db'),
-            connect_timeout=5  # Timeout pour éviter de bloquer trop longtemps  
-)
-        
-        
-        if connection.is_connected():
-            cursor = connection.cursor()
+            connect_timeout=5
+        )
+
+        with connection.cursor() as cursor:
             cursor.execute("SELECT 1")
-            cursor.fetchone()
-            cursor.close()
-            connection.close()
-            return True
-        return False
-        
+            result = cursor.fetchone()
+        connection.close()
+        return result is not None
+
     except Exception as e:
         print(f"Database health check failed: {e}")
         return False
+
 
 # Simple health check without database dependency (for initial startup)
 @app.route('/ready')
