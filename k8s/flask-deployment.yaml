@@ -30,8 +30,7 @@ spec:
         fsGroup: 2000
       containers:
       - name: flask-app
-        # Laisser un placeholder ${DOCKER_REGISTRY}/${APP_NAME}:${APP_VERSION} à remplacer dans Jenkinsfile
-        image: "${DOCKER_REGISTRY}/${APP_NAME}:${APP_VERSION}"
+        image: "${DOCKER_REGISTRY}/${APP_NAME}:${APP_VERSION}"  # Remplacé par Jenkins
         imagePullPolicy: IfNotPresent
         ports:
         - name: http
@@ -54,11 +53,13 @@ spec:
               name: db-credentials
               key: MYSQL_DATABASE
         - name: MYSQL_HOST
-          value: "mariadb"
+          value: "mariadb.moto-app.svc.cluster.local"  # Correction DNS confirmée
         - name: FLASK_ENV
           value: "production"
         - name: GUNICORN_WORKERS
           value: "2"
+        - name: PYTHONUNBUFFERED  # Pour les logs en temps réel
+          value: "1"
         resources:
           limits:
             cpu: 500m
@@ -66,31 +67,25 @@ spec:
           requests:
             cpu: 250m
             memory: 256Mi
-
-
+        startupProbe:
+          httpGet:
+            path: /healthz
+            port: 5000
+          failureThreshold: 30  # Temps max: 30*5s = 150s (2.5min)
+          periodSeconds: 5
         readinessProbe:
           httpGet:
-            path: /health
+            path: /healthz
             port: 5000
-            scheme: HTTP
           initialDelaySeconds: 15
           periodSeconds: 10
-          timeoutSeconds: 5
-          successThreshold: 1
           failureThreshold: 3
         livenessProbe:
           httpGet:
-            path: /health
+            path: /healthz
             port: 5000
-          initialDelaySeconds: 30
+          initialDelaySeconds: 45  # Délai important pour les apps lentes
           periodSeconds: 15
-          timeoutSeconds: 5
-        startupProbe:
-          httpGet:
-            path: /health
-            port: 5000
-          failureThreshold: 10
-          periodSeconds: 5
         volumeMounts:
         - name: tmp-volume
           mountPath: /tmp
