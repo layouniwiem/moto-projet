@@ -34,6 +34,7 @@ data:
 
     -- Insertion de motos de test
     INSERT IGNORE INTO moto (marque, modele, annee, kilometrage, prix, description, image_url) VALUES 
-    ('Honda', 'CBR 600RR', 2018, 15000, 8500, 'Excellent état, entretien régulier', 'https://example.com/honda.jpg'),
-    ('Yamaha', 'MT-07', 2020, 8000, 6500, 'Première main, comme neuve', 'https://example.com/yamaha.jpg'),
-    ('Kawasaki', 'Z900', 2021, 5000, 9000, 'Garantie constructeur, options incluses', 'https://example.com/kawasaki.jpg');
+    ('Honda', 'CBR 600RR', 2018, 15000, 8500, 'Excellent état, entretien régulier', 'https://th.bing.com/th/id/OIP.JbSULy1SSk58Jh9ZOC0vPAHaEo?rs=1&pid=ImgDetMain'),
+    ('Yamaha', 'MT-07', 2020, 8000, 6500, 'Première main, comme neuve', 'https://th.bing.com/th/id/OIP.iSrQVgkeN4nkzHSfPl1eCAHaFj?rs=1&pid=ImgDetMain'),
+    ('Kawasaki', 'Z900', 2021, 5000, 9000, 'Garantie constructeur, options incluses', 'https://th.bing.com/th/id/R.449368898dd81b2ea3f04c993a060cba?rik=fwG96vc7Y2hfDw&pid=ImgRaw&r=0');
+    
