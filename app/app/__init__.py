@@ -1,55 +1,22 @@
-from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from flask_login import LoginManager
-from .config import Config
 import os
 
-db = SQLAlchemy()
-login_manager = LoginManager()
-login_manager.login_view = 'auth.login'
+class Config:
+    # Clé secrète pour Flask
+    SECRET_KEY = os.environ.get('SECRET_KEY', 'default-secret-key')
 
-##def create_app():
- #   app = Flask(__name__, template_folder='../templates', static_folder='../static')
-#
- #   app.config.from_object(Config)
-#
- #   db.init_app(app)
-   # login_manager.init_app(app)
+    # Infos base de données MySQL / MariaDB
+    MYSQL_USER = os.environ.get('MYSQL_USER', 'default_user')
+    MYSQL_PASSWORD = os.environ.get('MYSQL_PASSWORD', 'default_password')
+    MYSQL_DATABASE = os.environ.get('MYSQL_DATABASE', 'default_db')
+    MYSQL_HOST = os.environ.get('MYSQL_HOST', 'mariadb')  # service Kubernetes
 
-   # from .routes import main, auth
-  #  app.register_blueprint(main)
-   # app.register_blueprint(auth)
+    # Construction dynamique de l'URI SQLAlchemy
+    SQLALCHEMY_DATABASE_URI = (
+        f"mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}:3306/{MYSQL_DATABASE}"
+    )
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
 
-   # from monitoring import setup_metrics
-   # setup_metrics(app)
+    # Environnement Flask (optionnel)
+    FLASK_ENV = os.environ.get('FLASK_ENV', 'production')
 
-  #  os.makedirs(os.path.join(app.static_folder, 'img'), exist_ok=True)
-
-   # return app
-
-from .models import User
-def create_app(test_config=None):
-    app = Flask(__name__, template_folder='../templates', static_folder='../static')
-    
-    if test_config:
-        app.config.update(test_config)
-    else:
-        app.config.from_object(Config)
-
-    db.init_app(app)
-    login_manager.init_app(app)
-
-    from .routes import main, auth
-    app.register_blueprint(main)
-    app.register_blueprint(auth)
-
-    #from monitoring import monitoring
-    #monitoring.register_metrics(app)
-   # from monitoring import setup_metrics
-    #setup_metrics(app)
-    os.makedirs(os.path.join(app.static_folder, 'img'), exist_ok=True)
-
-    return app
-@login_manager.user_loader
-def load_user(user_id):
-    return User.query.get(int(user_id))
+    # Autres configs spécifiques si besoin

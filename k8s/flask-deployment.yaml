@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
       - name: flask-app
-        image: ${DOCKER_REGISTRY}/${APP_NAME}:${APP_VERSION}  # Corrigé !
+        image: ${DOCKER_REGISTRY}/${APP_NAME}:${APP_VERSION}
         ports:
         - containerPort: 5000
         volumeMounts:
@@ -30,9 +30,7 @@ spec:
           value: "--bind=0.0.0.0:5000 --workers=2 --timeout=120 --keep-alive=2 --preload --access-logfile -"
         - name: UPLOAD_FOLDER
           value: "/app/uploads"
-        # Variables de base de données
-        - name: DATABASE_URL
-          value: "mysql://$(MYSQL_USER):$(MYSQL_PASSWORD)@mariadb:3306/$(MYSQL_DATABASE)"
+        # Injection des variables d'environnement base de données depuis les secrets
         - name: MYSQL_USER
           valueFrom:
             secretKeyRef:
@@ -61,7 +59,7 @@ spec:
             cpu: "1000m"
         startupProbe:
           httpGet:
-            path: /health  # Changé de /ready à /health
+            path: /health
             port: 5000
           initialDelaySeconds: 30
           periodSeconds: 10
@@ -74,7 +72,7 @@ spec:
           periodSeconds: 30
         readinessProbe:
           httpGet:
-            path: /health  # Changé de /ready à /health
+            path: /health
             port: 5000
           initialDelaySeconds: 5
           periodSeconds: 5
