@@ -19,28 +19,49 @@ spec:
     spec:
       containers:
       - name: flask-app
-        image: __IMAGE__  # À remplacer par votre image
+        image: ${DOCKER_REGISTRY}/${APP_NAME}:${APP_VERSION}  # Corrigé !
         ports:
         - containerPort: 5000
         volumeMounts:
         - name: uploads-volume
-          mountPath: /app/uploads  # Chemin dans le container
+          mountPath: /app/uploads
         env:
         - name: GUNICORN_CMD_ARGS
           value: "--bind=0.0.0.0:5000 --workers=2 --timeout=120 --keep-alive=2 --preload --access-logfile -"
         - name: UPLOAD_FOLDER
-          value: "/app/uploads"  # Doit correspondre au mountPath
-        # ... [vos autres variables d'environnement] ...
+          value: "/app/uploads"
+        # Variables de base de données
+        - name: DATABASE_URL
+          value: "mysql://$(MYSQL_USER):$(MYSQL_PASSWORD)@mariadb:3306/$(MYSQL_DATABASE)"
+        - name: MYSQL_USER
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: MYSQL_USER
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: MYSQL_PASSWORD
+        - name: MYSQL_DATABASE
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: MYSQL_DATABASE
+        # Variables du ConfigMap
+        envFrom:
+        - configMapRef:
+            name: app-config
         resources:
           requests:
-            memory: "512Mi"  # Augmenté
+            memory: "512Mi"
             cpu: "500m"
           limits:
             memory: "1Gi"
             cpu: "1000m"
         startupProbe:
           httpGet:
-            path: /ready
+            path: /health  # Changé de /ready à /health
             port: 5000
           initialDelaySeconds: 30
           periodSeconds: 10
@@ -49,11 +70,11 @@ spec:
           httpGet:
             path: /health
             port: 5000
-          initialDelaySeconds: 120  # Délai long pour l'appli
+          initialDelaySeconds: 120
           periodSeconds: 30
         readinessProbe:
           httpGet:
-            path: /ready
+            path: /health  # Changé de /ready à /health
             port: 5000
           initialDelaySeconds: 5
           periodSeconds: 5
