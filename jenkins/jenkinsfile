@@ -9,8 +9,6 @@ pipeline {
         DOCKER_REGISTRY = "docker.io/layouniwiem"
         APP_NAME = "moto-app"
         APP_VERSION = "${env.BUILD_NUMBER}"
-        KUBECONFIG_DIR = "/tmp/.kube"
-        KUBECONFIG_PATH = "/tmp/.kube/config"
     }
 
     stages {
@@ -34,7 +32,38 @@ pipeline {
             }
         }
 
-       
+        stage('Test') {
+            steps {
+                dir('app') {
+                    script {
+                        try {
+                            sh '''
+                                export PYTHONPATH=$PWD
+                                mkdir -p test-reports
+                                ./venv/bin/python -m pytest ../test --cov=app --cov-report=html --junitxml=test-reports/results.xml
+                            '''
+                        } catch (err) {
+                            echo "⚠️ Tests échoués : ${err.getMessage()}"
+                            currentBuild.result = 'UNSTABLE'
+                        }
+                    }
+                }
+            }
+            post {
+                always {
+                    junit 'app/test-reports/*.xml'
+                    publishHTML target: [
+                        allowMissing: true,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true,
+                        reportDir: 'app/htmlcov',
+                        reportFiles: 'index.html',
+                        reportName: 'Coverage Report'
+                    ]
+                }
+            }
+        }
+
         stage('Build Docker Image') {
             when {
                 expression { currentBuild.result != 'FAILURE' }
@@ -63,105 +92,104 @@ pipeline {
                 }
             }
         }
-    
-   stage('Security Scan') {
-    when {
-        expression { currentBuild.result != 'FAILURE' }
-    }
-    steps {
-        script {
-            try {
-                sh '''
-                    # Répertoire local pour Trivy
-                    mkdir -p "$HOME/.local/bin"
-                    export PATH="$HOME/.local/bin:$PATH"
 
-                    # Installer Trivy localement s'il n'existe pas
-                    if ! command -v trivy > /dev/null; then
-                        echo "Installation de Trivy..."
-                        curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b "$HOME/.local/bin"
-                    fi
-
-                    # Vérifier que Trivy fonctionne
-                    trivy --version
-
-                    # Lancer le scan
-                    trivy image --timeout 10m --scanners vuln ${DOCKER_REGISTRY}/${APP_NAME}:${APP_VERSION}
-                '''
-            } catch (err) {
-                echo "⚠️ Analyse Trivy échouée : ${err.getMessage()}"
-                currentBuild.result = 'UNSTABLE'
+        stage('Push Docker Image') {
+            when {
+                expression { currentBuild.result != 'FAILURE' }
+            }
+            steps {
+                sh "docker push ${DOCKER_REGISTRY}/${APP_NAME}:${APP_VERSION}"
+                sh "docker push ${DOCKER_REGISTRY}/${APP_NAME}:latest"
             }
         }
-    }
-}
-    
-    stage('Test') {
-        steps {
-            dir('app') {
+
+        stage('Security Scan') {
+            when {
+                expression { currentBuild.result != 'FAILURE' }
+            }
+            steps {
                 script {
                     try {
                         sh '''
-                            mkdir -p test-reports
-                            ./venv/bin/python -m pytest ../test --cov=app --cov-report=html --junitxml=test-reports/results.xml
+                            mkdir -p "$HOME/.local/bin"
+                            export PATH="$HOME/.local/bin:$PATH"
+                            if ! command -v trivy > /dev/null; then
+                                echo "Installation de Trivy..."
+                                curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b "$HOME/.local/bin"
+                            fi
+                            trivy --version
+                            trivy image --timeout 10m --scanners vuln ${DOCKER_REGISTRY}/${APP_NAME}:${APP_VERSION}
                         '''
                     } catch (err) {
-                        echo "⚠️ Tests échoués : ${err.getMessage()}"
+                        echo "⚠️ Analyse Trivy échouée : ${err.getMessage()}"
                         currentBuild.result = 'UNSTABLE'
                     }
                 }
             }
         }
-        post {
-            always {
-                junit 'app/test-reports/*.xml'
-                publishHTML target: [
-                    allowMissing: true,
-                    alwaysLinkToLastBuild: true,
-                    keepAll: true,
-                    reportDir: 'app/htmlcov',
-                    reportFiles: 'index.html',
-                    reportName: 'Coverage Report'
-                ]
+
+        stage('Install kubectl') {
+            when {
+                expression { currentBuild.result != 'FAILURE' }
+            }
+            steps {
+                sh '''
+                    if ! command -v kubectl > /dev/null; then
+                        echo "Installation de kubectl..."
+                        curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+                        chmod +x kubectl
+                        sudo mv kubectl /usr/local/bin/
+                    fi
+                    kubectl version --client
+                '''
             }
         }
-    }
 
         stage('Deploy to Kubernetes') {
             when {
                 expression { currentBuild.result != 'FAILURE' }
             }
-            agent {
-                docker {
-                    image 'bitnami/kubectl:latest'
-                    args '--entrypoint=""'
-                }
-            }
             steps {
-                git url: 'https://github.com/layouniwiem/moto-projet.git', branch: 'main'
-
                 withCredentials([file(credentialsId: 'KUBECONFIG', variable: 'KUBECONFIG_FILE')]) {
                     sh '''
-                        mkdir -p /tmp/.kube
-                        cp "$KUBECONFIG_FILE" /tmp/.kube/config
-                        export KUBECONFIG=/tmp/.kube/config
+                        mkdir -p $HOME/.kube
+                        cp "$KUBECONFIG_FILE" $HOME/.kube/config
+                        chmod 600 $HOME/.kube/config
+                        export KUBECONFIG=$HOME/.kube/config
+
+                        kubectl cluster-info
 
                         kubectl apply -f k8s/namespace.yml
                         kubectl apply -f k8s/secrets.yaml
                         kubectl apply -f k8s/config-map.yaml
-                        kubectl apply -f k8s/init-sql-configmap.yaml
+
+                        kubectl delete configmap db-init-script -n moto-app --ignore-not-found=true
+                        kubectl apply -f k8s/db-init-configmap.yaml
+
                         kubectl apply -f k8s/mariadb-pv-pvc.yaml  
                         kubectl apply -f k8s/persistent-volumes.yaml
-                        kubectl apply -f k8s/db-init-configmap.yaml
                         kubectl apply -f k8s/mariadb-deployment.yaml
                         kubectl apply -f k8s/mariadb-service.yaml
 
-                        sed -e "s|\\${DOCKER_REGISTRY}|${DOCKER_REGISTRY}|g" \
-                            -e "s|\\${APP_VERSION}|${APP_VERSION}|g" k8s/flask-deployment.yaml | kubectl apply -f -
+                        echo "⏳ Attente de MariaDB..."
+                        kubectl wait --for=condition=ready pod -l app=mariadb -n moto-app --timeout=300s || true
+                    '''
 
+                    // ✅ Substitution correcte des variables dans le fichier YAML
+                    sh """
+                        sed 's|\\\${DOCKER_REGISTRY}|${DOCKER_REGISTRY}|g' k8s/flask-deployment.yaml | \
+                        sed 's|\\\${APP_NAME}|${APP_NAME}|g' | \
+                        sed 's|\\\${APP_VERSION}|${APP_VERSION}|g' > /tmp/flask-deployment-temp.yaml
+
+                        echo "📄 Contenu final du fichier flask-deployment :"
+                        cat /tmp/flask-deployment-temp.yaml
+
+                        kubectl apply -f /tmp/flask-deployment-temp.yaml
                         kubectl apply -f k8s/flask-service.yaml
                         kubectl apply -f k8s/ingress.yaml
-                    '''
+
+                        rm -f /tmp/flask-deployment-temp.yaml
+                    """
                 }
             }
         }
@@ -173,15 +201,19 @@ pipeline {
             steps {
                 withCredentials([file(credentialsId: 'KUBECONFIG', variable: 'KUBECONFIG_FILE')]) {
                     sh '''
-                        mkdir -p /tmp/.kube
-                        cp "$KUBECONFIG_FILE" /tmp/.kube/config
-                        export KUBECONFIG=/tmp/.kube/config
+                        export KUBECONFIG=$HOME/.kube/config
 
                         echo "⏳ Vérification du déploiement..."
-                        kubectl rollout status deployment/flask-app -n moto-app
+                        kubectl rollout status deployment/flask-app -n moto-app --timeout=600s
 
-                        echo "📦 Liste des pods :"
-                        kubectl get pods -n moto-app
+                        echo "📦 État des ressources :"
+                        kubectl get all -n moto-app
+
+                        echo "📋 Événements récents :"
+                        kubectl get events -n moto-app --sort-by='.lastTimestamp' | tail -10
+
+                        echo "📋 Logs des pods Flask (si disponibles) :"
+                        kubectl logs -l app=flask-app -n moto-app --tail=50 || echo "Aucun log disponible"
                     '''
                 }
             }
@@ -199,7 +231,7 @@ pipeline {
             echo '❌ Le déploiement a échoué.'
         }
         always {
-            sh 'rm -rf /tmp/.kube || true'
+            sh 'rm -rf $HOME/.kube || true'
             cleanWs()
         }
     }
